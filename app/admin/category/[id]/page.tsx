@@ -1,127 +1,149 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { CldUploadButton } from "next-cloudinary";
+import { useCart } from "@/lib/store/cart";
+import { Pencil, Trash2 } from "lucide-react";
 
-export default function EditCategoryPage() {
-    const router = useRouter();
+export default function CategoryDetailPage() {
     const params = useParams();
+    const router = useRouter();
     const id = params.id as string;
+    const queryClient = useQueryClient();
 
-    const [loading, setLoading] = useState(true);
+    const addItem = useCart((state: any) => state.addItem);
 
-    const [name, setName] = useState("");
-    const [slug, setSlug] = useState("");
-    const [description, setDescription] = useState("");
-    const [imageUrl, setImageUrl] = useState("");
+    const { data, isLoading } = useQuery({
+        queryKey: ["category-products", id],
+        queryFn: () =>
+            fetch(`/api/products?categoryId=${id}`).then((r) => r.json()),
+    });
 
-    // FETCH CATEGORY
-    useEffect(() => {
-        const fetchCategory = async () => {
-            const res = await fetch(`/api/categories/${id}`);
-            console.log(res)
-            const data = await res.json();
+    if (isLoading) return <div className="p-6">Loading...</div>;
 
-            setName(data.name);
-            setSlug(data.slug);
-            setDescription(data.description || "");
-            setImageUrl(data.imageUrl || "");
+    const categoryName = data?.[0]?.category?.name;
+    const hasProducts = data?.length > 0;
 
-            setLoading(false);
-        };
-
-        fetchCategory();
-    }, [id]);
-
-    const onUpdate = async () => {
-        await fetch(`/api/categories/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                name,
-                slug,
-                description,
-                imageUrl,
-            }),
-        });
-
-        router.push("/admin/category");
-    };
-
-    if (loading) {
-        return <div className="p-6">Loading...</div>;
-    }
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            await fetch(`/api/products/${id}`, {
+                method: "DELETE",
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+        },
+    });
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* BACKDROP */}
-            <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-                onClick={() => router.back()}
-            />
+        <div className="p-6 space-y-6">
+            {/* HEADER */}
+            <h2 className="text-2xl font-semibold">
+                {categoryName || "Category"}
+            </h2>
 
-            {/* CARD */}
-            <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95">
-                <h2 className="text-xl font-semibold mb-6">Edit Category</h2>
+            {/* EMPTY STATE */}
+            {!hasProducts && (
+                <div className="border p-10 rounded-lg text-center text-muted-foreground">
+                    No products found
+                </div>
+            )}
 
-                <div className="space-y-4">
-                    {/* NAME */}
-                    <div>
-                        <Label>Name</Label>
-                        <Input value={name} onChange={(e) => setName(e.target.value)} />
-                    </div>
-
-                    {/* SLUG */}
-                    <div>
-                        <Label>Slug</Label>
-                        <Input value={slug} onChange={(e) => setSlug(e.target.value)} />
-                    </div>
-
-                    {/* DESCRIPTION */}
-                    <div>
-                        <Label>Description</Label>
-                        <Textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                        />
-                    </div>
-
-                    {/* IMAGE */}
-                    <div>
-                        <Label>Image</Label>
-
-                        <CldUploadButton
-                            uploadPreset="kanjirow_upload"
-                            onSuccess={(result: any) => {
-                                setImageUrl(result.info.secure_url);
-                            }}
-                            className="mt-2 px-3 py-2 border rounded-md w-full text-sm"
-                        >
-                            Replace Image
-                        </CldUploadButton>
-
-                        {imageUrl && (
+            {/* PRODUCTS */}
+            {data?.map((product: any) => (
+                <div
+                    key={product.id}
+                    className="border rounded-xl p-5 space-y-4 shadow-sm"
+                >
+                    {/* PRODUCT HEADER */}
+                    <div className="flex justify-between items-center">
+                        <div className="flex gap-4 items-center">
                             <img
-                                src={imageUrl}
-                                className="h-28 w-full object-cover rounded-md mt-3 border"
+                                src={product.imageUrl || "/placeholder.png"}
+                                className="h-14 w-14 rounded object-cover"
                             />
-                        )}
+
+                            <div>
+                                <h3 className="font-semibold text-lg">
+                                    {product.name}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {product.category?.name}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* ACTIONS */}
+                        <div className="flex gap-2">
+                            <Button
+                                variant="ghost"
+                                onClick={() =>
+                                    router.push(`/admin/products/${product.id}`)
+                                }
+                            >
+                                <Pencil className="text-yellow-500" />
+                            </Button>
+
+                            <Button
+                                variant="ghost"
+                                onClick={() => {
+                                    if (!confirm("Delete this product?")) return;
+                                    deleteMutation.mutate(product.id);
+                                }}
+                            >
+                                <Trash2 className="text-red-500" />
+                            </Button>
+                        </div>
                     </div>
 
-                    {/* ACTIONS */}
-                    <div className="flex justify-end gap-2 pt-2">
-                        <Button variant="outline" onClick={() => router.back()}>
-                            Cancel
-                        </Button>
-                        <Button onClick={onUpdate}>Update</Button>
+                    {/* SEPARATOR */}
+                    <div className="border-t" />
+
+                    {/* ITEMS */}
+                    <div className="space-y-3">
+                        {product.items?.length === 0 && (
+                            <p className="text-sm text-muted-foreground">
+                                No items added
+                            </p>
+                        )}
+
+                        {product.items?.map((item: any) => (
+                            <div
+                                key={item.id}
+                                className="flex justify-between items-start bg-muted p-3 rounded-md"
+                            >
+                                {/* LEFT SIDE */}
+                                <div className="space-y-1">
+                                    <p className="font-medium">
+                                        {item.description || "No label"}
+                                    </p>
+
+                                    {/* ATTRIBUTES */}
+                                    <div className="flex flex-wrap gap-2">
+                                        {item.attributes &&
+                                            Object.entries(item.attributes).map(
+                                                ([key, value]) => (
+                                                    <span
+                                                        key={key}
+                                                        className="text-xs px-2 py-1 bg-white border rounded"
+                                                    >
+                                                        {key}: {String(value)}
+                                                    </span>
+                                                )
+                                            )}
+                                    </div>
+                                </div>
+
+                                {/* RIGHT SIDE */}
+                                <div className="font-semibold">
+                                    Rs. {item.price}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
-            </div>
+            ))}
         </div>
     );
 }

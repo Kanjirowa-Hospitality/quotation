@@ -1,52 +1,114 @@
-'use client'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
-import { Category } from '@/app/generated/prisma/client'
-import { useQuery } from '@tanstack/react-query'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Package, Layers, Folder, LayoutDashboard, User } from "lucide-react";
 
 export function Sidebar() {
-    const { data: cats } = useQuery<Category[]>({
-        queryKey: ['categories'],
-        queryFn: () => fetch('/api/categories').then((r) => r.json()),
-    })
-    const pathname = usePathname()
+    const pathname = usePathname();
+
+    const { data: cats } = useQuery<any[]>({
+        queryKey: ["categories"],
+        queryFn: () => fetch("/api/categories").then((r) => r.json()),
+    });
 
     return (
-        <aside className="w-64 bg-card border-r flex flex-col">
-            <div className="p-4 flex items-center gap-2">
-                <img src="/logo-png.png" alt="Kanjirow" className="h-16" />
-                <span className="font-bold text-2xl uppercase">Kanjirow</span>
+        <aside className="w-64 h-screen flex flex-col border-r bg-white">
+            {/* LOGO */}
+            <div className="px-5 py-4 flex items-center gap-3 border-b">
+                <img src="/logo-png.png" alt="Kanjirow" className="h-10" />
+                <span className="font-semibold text-lg tracking-wide">
+                    Kanjirowa
+                </span>
             </div>
-            <Separator />
-            <ScrollArea className="flex-1 px-4 py-4">
 
-                <nav className='my-2'>
-                    <Link href={'/admin/products'}> Products</Link>
-                </nav>
+            {/* MAIN CONTENT */}
+            <ScrollArea className="flex-1 px-3 py-4">
+                {/* DASHBOARD */}
+                <div className="mb-6">
+                    <p className="text-xs text-muted-foreground px-2 mb-2 uppercase tracking-wider">
+                        Dashboard
+                    </p>
 
-                <nav className='my-4'>
-                    <Link href={'/admin/items'}> Items</Link>
-                </nav>
-                <Link href={'/admin/category'}> Categories</Link>
-                <Separator />
-                <nav className="space-y-2">
-                    {cats?.map((c) => (
-                        <Link
-                            key={c.id}
-                            href={`/?category=${c.slug}`}
-                            className={cn(
-                                'flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent',
-                                pathname === `/?category=${c.slug}` && 'bg-accent font-semibold'
-                            )}
-                        >
-                            {c.name}
-                        </Link>
-                    ))}
-                </nav>
+                    <SidebarLink
+                        href="/"
+                        icon={<LayoutDashboard size={18} />}
+                        label="Overview"
+                        active={pathname === "/"}
+                    />
+                </div>
+
+                {/* MANAGEMENT */}
+                <div className="mb-6">
+                    <p className="text-xs text-muted-foreground px-2 mb-2 uppercase tracking-wider">
+                        Management
+                    </p>
+
+                    <SidebarLink
+                        href="/admin/products"
+                        icon={<Package size={18} />}
+                        label="Products"
+                        active={pathname.startsWith("/admin/products")}
+                    />
+
+                    <SidebarLink
+                        href="/admin/category"
+                        icon={<Folder size={18} />}
+                        label="Categories"
+                        active={pathname.startsWith("/admin/category")}
+                    />
+                </div>
+
+                <Separator className="my-4" />
             </ScrollArea>
-        </aside >
-    )
+
+            {/* BOTTOM USER SECTION */}
+            <div className="border-t p-4">
+                <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                        <User size={16} />
+                    </div>
+
+                    <div className="flex-1">
+                        <p className="text-sm font-medium">Admin User</p>
+                        <p className="text-xs text-muted-foreground">
+                            admin@kanjirowa.com
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    );
+}
+
+
+function SidebarLink({
+    href,
+    icon,
+    label,
+    active,
+}: {
+    href: string;
+    icon: React.ReactNode;
+    label: string;
+    active?: boolean;
+}) {
+    return (
+        <Link
+            href={href}
+            className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all",
+                active
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            )}
+        >
+            {icon}
+            <span>{label}</span>
+        </Link>
+    );
 }

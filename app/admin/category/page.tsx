@@ -51,6 +51,7 @@ export default function AdminCategoriesPage() {
                 {data?.map((cat) => (
                     <div
                         key={cat.id}
+                        onClick={() => router.push(`/admin/category/${cat.id}`)}
                         className="relative group h-40 rounded-xl overflow-hidden shadow-md cursor-pointer"
                     >
                         {/* BACKGROUND IMAGE */}
@@ -80,7 +81,7 @@ export default function AdminCategoriesPage() {
 
                                 <button
                                     onClick={() =>
-                                        router.push(`/admin/category/${cat.id}`)
+                                        router.push(`/admin/category/${cat.id}/edit`)
                                     }
                                     className="p-2 bg-white/10 hover:bg-yellow-500/80 rounded-md backdrop-blur cursor-pointer"
                                 >

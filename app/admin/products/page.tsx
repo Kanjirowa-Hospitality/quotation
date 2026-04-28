@@ -1,17 +1,9 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Trash2, Pencil } from "lucide-react";
 
 export default function AdminProductsPage() {
     const router = useRouter();
@@ -22,29 +14,20 @@ export default function AdminProductsPage() {
         queryFn: () => fetch("/api/products").then((r) => r.json()),
     });
 
-    // ✅ DELETE MUTATION
+    // DELETE PRODUCT
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            const res = await fetch(`/api/products/${id}`, {
+            await fetch(`/api/products/${id}`, {
                 method: "DELETE",
             });
-
-            if (!res.ok) throw new Error("Failed to delete");
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["admin-products"] });
         },
     });
 
-    const handleDelete = (id: string) => {
-        const confirmDelete = confirm("Delete this product?");
-        if (!confirmDelete) return;
-
-        deleteMutation.mutate(id);
-    };
-
     return (
-        <div>
+        <div className="p-6 space-y-6">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Products</h2>
                 <Button onClick={() => router.push("/admin/products/new")}>
@@ -52,55 +35,99 @@ export default function AdminProductsPage() {
                 </Button>
             </div>
 
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Image</TableHead>
-                        <TableHead>Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
+            {data?.map((product) => (
+                <div
+                    key={product.id}
+                    className="border rounded-xl p-5 space-y-4 shadow-sm"
+                >
+                    {/* PRODUCT HEADER */}
+                    <div className="flex justify-between items-center">
+                        <div className="flex gap-4 items-center">
+                            <img
+                                src={product.imageUrl || "/placeholder.png"}
+                                className="h-14 w-14 rounded object-cover"
+                            />
 
-                <TableBody>
-                    {data?.map((p) => (
-                        <TableRow key={p.id}>
-                            <TableCell>{p.name}</TableCell>
-                            <TableCell>{p.category?.name}</TableCell>
+                            <div>
+                                <h3 className="font-semibold text-lg">
+                                    {product.name}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {product.category?.name}
+                                </p>
+                            </div>
+                        </div>
 
-                            <TableCell>
-                                <img
-                                    src={p.imageUrl}
-                                    alt={p.name}
-                                    className="h-16 w-16 object-cover rounded"
-                                />
-                            </TableCell>
+                        {/* ACTIONS */}
+                        <div className="flex gap-2">
+                            <Button
+                                variant="ghost"
+                                onClick={() =>
+                                    router.push(`/admin/products/${product.id}`)
+                                }
+                            >
+                                <Pencil className="text-yellow-500" />
+                            </Button>
 
-                            <TableCell className="flex gap-2 items-center ">
-                                {/* EDIT */}
-                                <Button
-                                    variant="link"
-                                    className="cursor-pointer hover:text-yellow-400 text-xl"
-                                    onClick={() =>
-                                        router.push(`/admin/products/${p.id}`)
-                                    }
-                                >
-                                    <Pencil />
-                                </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => {
+                                    if (!confirm("Delete this product?")) return;
+                                    deleteMutation.mutate(product.id);
+                                }}
+                            >
+                                <Trash2 className="text-red-500" />
+                            </Button>
+                        </div>
+                    </div>
 
-                                {/* DELETE */}
-                                <Button
-                                    variant="link"
-                                    className="cursor-pointer hover:text-red-600 text-xl"
-                                    onClick={() => handleDelete(p.id)}
-                                >
-                                    <Trash2 />
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    {/* SEPARATOR */}
+                    <div className="border-t" />
+
+                    {/* ITEMS */}
+                    <div className="space-y-3">
+                        {product.items?.length === 0 && (
+                            <p className="text-sm text-muted-foreground">
+                                No items added
+                            </p>
+                        )}
+
+                        {product.items?.map((item: any) => (
+                            <div
+                                key={item.id}
+                                className="flex justify-between items-start bg-muted p-3 rounded-md"
+                            >
+                                {/* LEFT SIDE */}
+                                <div className="space-y-1">
+                                    <p className="font-medium">
+                                        {item.description || "No label"}
+                                    </p>
+
+                                    {/* ATTRIBUTES */}
+                                    <div className="flex flex-wrap gap-2">
+                                        {item.attributes &&
+                                            Object.entries(item.attributes).map(
+                                                ([key, value]) => (
+                                                    <span
+                                                        key={key}
+                                                        className="text-xs px-2 py-1 bg-white border rounded"
+                                                    >
+                                                        {key}: {String(value)}
+                                                    </span>
+                                                )
+                                            )}
+                                    </div>
+                                </div>
+
+                                {/* RIGHT SIDE */}
+                                <div className="font-semibold">
+                                    Rs. {item.price}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }

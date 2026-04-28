@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// ✅ GET ONE PRODUCT (WITH ITEMS)
 export async function GET(
     req: Request,
     context: { params: Promise<{ id: string }> }
@@ -9,17 +10,22 @@ export async function GET(
 
     const product = await prisma.product.findUnique({
         where: { id },
+        include: {
+            category: true,
+            items: true, // ✅ IMPORTANT
+        },
     });
 
     if (!product) {
         return NextResponse.json(
-            { error: "product not found" },
+            { error: "Product not found" },
             { status: 404 }
         );
     }
 
     return NextResponse.json(product);
 }
+
 
 export async function PUT(
     req: Request,
@@ -28,13 +34,37 @@ export async function PUT(
     const { id } = await context.params;
     const body = await req.json();
 
+    const { name, categoryId, imageUrl, items } = body;
+
+    // 1. delete existing items
+    await prisma.item.deleteMany({
+        where: { productId: id },
+    });
+
+    // 2. recreate items
     const updated = await prisma.product.update({
         where: { id },
-        data: body,
+        data: {
+            name,
+            categoryId,
+            imageUrl,
+            items: {
+                create: items.map((item: any) => ({
+                    price: item.price,
+                    description: item.description,
+                    attributes: item.attributes || {},
+                })),
+            },
+        },
+        include: {
+            items: true,
+            category: true,
+        },
     });
 
     return NextResponse.json(updated);
 }
+
 
 export async function DELETE(
     req: Request,
@@ -46,5 +76,5 @@ export async function DELETE(
         where: { id },
     });
 
-    return Response.json({ success: true });
+    return NextResponse.json({ success: true });
 }
