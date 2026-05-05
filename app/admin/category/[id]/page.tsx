@@ -3,8 +3,25 @@
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { useCart } from "@/lib/store/cart";
+import { SelectableItemRow } from "@/components/selectable-item-row";
 import { Pencil, Trash2 } from "lucide-react";
+
+type ProductItem = {
+    id: string;
+    description: string | null;
+    price: number;
+    attributes: Record<string, unknown> | null;
+};
+
+type CategoryProduct = {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+    category?: {
+        name: string;
+    } | null;
+    items?: ProductItem[];
+};
 
 export default function CategoryDetailPage() {
     const params = useParams();
@@ -12,18 +29,11 @@ export default function CategoryDetailPage() {
     const id = params.id as string;
     const queryClient = useQueryClient();
 
-    const addItem = useCart((state: any) => state.addItem);
-
-    const { data, isLoading } = useQuery({
+    const { data, isLoading } = useQuery<CategoryProduct[]>({
         queryKey: ["category-products", id],
         queryFn: () =>
             fetch(`/api/products?categoryId=${id}`).then((r) => r.json()),
     });
-
-    if (isLoading) return <div className="p-6">Loading...</div>;
-
-    const categoryName = data?.[0]?.category?.name;
-    const hasProducts = data?.length > 0;
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
@@ -35,6 +45,11 @@ export default function CategoryDetailPage() {
             queryClient.invalidateQueries({ queryKey: ["admin-products"] });
         },
     });
+
+    if (isLoading) return <div className="p-6">Loading...</div>;
+
+    const categoryName = data?.[0]?.category?.name;
+    const hasProducts = data?.length > 0;
 
     return (
         <div className="p-6 space-y-6">
@@ -51,7 +66,7 @@ export default function CategoryDetailPage() {
             )}
 
             {/* PRODUCTS */}
-            {data?.map((product: any) => (
+            {data?.map((product) => (
                 <div
                     key={product.id}
                     className="border rounded-xl p-5 space-y-4 shadow-sm"
@@ -61,6 +76,7 @@ export default function CategoryDetailPage() {
                         <div className="flex gap-4 items-center">
                             <img
                                 src={product.imageUrl || "/placeholder.png"}
+                                alt={product.name}
                                 className="h-14 w-14 rounded object-cover"
                             />
 
@@ -108,38 +124,15 @@ export default function CategoryDetailPage() {
                             </p>
                         )}
 
-                        {product.items?.map((item: any) => (
-                            <div
+                        {product.items?.map((item) => (
+                            <SelectableItemRow
                                 key={item.id}
-                                className="flex justify-between items-start bg-muted p-3 rounded-md"
-                            >
-                                {/* LEFT SIDE */}
-                                <div className="space-y-1">
-                                    <p className="font-medium">
-                                        {item.description || "No label"}
-                                    </p>
-
-                                    {/* ATTRIBUTES */}
-                                    <div className="flex flex-wrap gap-2">
-                                        {item.attributes &&
-                                            Object.entries(item.attributes).map(
-                                                ([key, value]) => (
-                                                    <span
-                                                        key={key}
-                                                        className="text-xs px-2 py-1 bg-white border rounded"
-                                                    >
-                                                        {key}: {String(value)}
-                                                    </span>
-                                                )
-                                            )}
-                                    </div>
-                                </div>
-
-                                {/* RIGHT SIDE */}
-                                <div className="font-semibold">
-                                    Rs. {item.price}
-                                </div>
-                            </div>
+                                item={item}
+                                product={{
+                                    name: product.name,
+                                    imageUrl: product.imageUrl,
+                                }}
+                            />
                         ))}
                     </div>
                 </div>

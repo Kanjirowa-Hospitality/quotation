@@ -2,19 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Package, Layers, Folder, LayoutDashboard, User } from "lucide-react";
+import { Package, Folder, LayoutDashboard, User } from "lucide-react";
 
 export function Sidebar() {
     const pathname = usePathname();
-
-    const { data: cats } = useQuery<any[]>({
-        queryKey: ["categories"],
-        queryFn: () => fetch("/api/categories").then((r) => r.json()),
-    });
 
     return (
         <aside className="w-64 h-screen flex flex-col border-r bg-white">

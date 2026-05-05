@@ -2,16 +2,15 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
-import { ProductCard } from '@/components/product-card'
+import { ProductCard, ProductCardItem } from '@/components/product-card'
 
 export default function Page() {
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('')
 
-  const { data: items } = useQuery<any[]>({
-    queryKey: ['items', search, category],
+  const { data: items } = useQuery<ProductCardItem[]>({
+    queryKey: ['items', search],
     queryFn: () =>
-      fetch(`/api/items?search=${search}&category=${category}`)
+      fetch(`/api/items?search=${encodeURIComponent(search)}`)
         .then((r) => r.json()),
   })
 

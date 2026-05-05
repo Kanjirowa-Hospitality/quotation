@@ -2,7 +2,16 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET() {
-    const cats = await prisma.category.findMany({ orderBy: { name: 'asc' } })
+    const cats = await prisma.category.findMany({
+        include: {
+            products: {
+                include: {
+                    items: true,
+                },
+            },
+        },
+        orderBy: { name: 'asc' },
+    })
     return NextResponse.json(cats)
 }
 
@@ -39,7 +48,10 @@ export async function POST(req: Request) {
     }
 }
 
-export async function PUT(req: Request, { params }: any) {
+export async function PUT(
+    req: Request,
+    { params }: { params: { id: string } }
+) {
     const body = await req.json();
 
     const updated = await prisma.category.update({
