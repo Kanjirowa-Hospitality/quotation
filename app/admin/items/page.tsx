@@ -1,8 +1,6 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
     Table,
     TableBody,
@@ -11,93 +9,89 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Pencil, Trash2 } from "lucide-react";
+
+type SaleOptionRow = {
+    id: string;
+    description: string | null;
+    price: number;
+    attributes: Record<string, unknown> | null;
+    product: {
+        name: string;
+        imageUrl: string | null;
+        category?: {
+            name: string;
+        } | null;
+    };
+};
+
+function formatAttributes(attributes: Record<string, unknown> | null) {
+    if (!attributes || Object.keys(attributes).length === 0) return "-";
+
+    return Object.entries(attributes)
+        .map(([key, value]) => `${key}: ${String(value)}`)
+        .join(", ");
+}
 
 export default function AdminItemsPage() {
-    const router = useRouter();
-    const queryClient = useQueryClient();
-
-    const { data } = useQuery<any[]>({
+    const { data, isLoading } = useQuery<SaleOptionRow[]>({
         queryKey: ["items"],
         queryFn: () => fetch("/api/items").then((r) => r.json()),
     });
 
-    // ✅ DELETE MUTATION
-    const deleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const res = await fetch(`/api/items/${id}`, {
-                method: "DELETE",
-            });
-
-            if (!res.ok) throw new Error("Failed to delete");
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["items"] });
-        },
-    });
-
-    const handleDelete = (id: string) => {
-        const confirmDelete = confirm("Delete this item?");
-        if (!confirmDelete) return;
-
-        deleteMutation.mutate(id);
-    };
-
     return (
-        <div>
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Items</h2>
-                <Button onClick={() => router.push("/admin/items/new")}>
-                    New Items
-                </Button>
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-xl font-semibold">Sale Options</h2>
+                <p className="text-sm text-muted-foreground">
+                    Prices grouped under product variants
+                </p>
             </div>
 
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Name</TableHead>
+                        <TableHead>Image</TableHead>
                         <TableHead>Product</TableHead>
                         <TableHead>Category</TableHead>
-                        <TableHead>Image</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead>Variant</TableHead>
+                        <TableHead>Specs / Sale Basis</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
                     </TableRow>
                 </TableHeader>
 
                 <TableBody>
-                    {data?.map((p) => (
-                        <TableRow key={p.id}>
-                            <TableCell>{p.name}</TableCell>
-                            <TableCell>{p.category?.name}</TableCell>
-                            <TableCell>{p.product?.name}</TableCell>
+                    {isLoading && (
+                        <TableRow>
+                            <TableCell colSpan={6} className="h-24 text-center">
+                                Loading sale options...
+                            </TableCell>
+                        </TableRow>
+                    )}
+
+                    {!isLoading && data?.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={6} className="h-24 text-center">
+                                No sale options found.
+                            </TableCell>
+                        </TableRow>
+                    )}
+
+                    {data?.map((row) => (
+                        <TableRow key={row.id}>
                             <TableCell>
                                 <img
-                                    src={p.imageUrl}
-                                    alt={p.name}
-                                    className="h-16 w-16 object-cover rounded"
+                                    src={row.product.imageUrl || "/placeholder.png"}
+                                    alt={row.product.name}
+                                    className="h-12 w-12 rounded object-cover"
                                 />
                             </TableCell>
-
-                            <TableCell className="flex gap-2 items-center ">
-                                {/* EDIT */}
-                                <Button
-                                    variant="link"
-                                    className="cursor-pointer hover:text-yellow-400 text-xl"
-                                    onClick={() =>
-                                        router.push(`/admin/items/${p.id}`)
-                                    }
-                                >
-                                    <Pencil />
-                                </Button>
-
-                                {/* DELETE */}
-                                <Button
-                                    variant="link"
-                                    className="cursor-pointer hover:text-red-600 text-xl"
-                                    onClick={() => handleDelete(p.id)}
-                                >
-                                    <Trash2 />
-                                </Button>
+                            <TableCell className="font-medium">{row.product.name}</TableCell>
+                            <TableCell>{row.product.category?.name || "-"}</TableCell>
+                            <TableCell>{row.description || "-"}</TableCell>
+                            <TableCell className="max-w-md whitespace-normal">
+                                {formatAttributes(row.attributes)}
                             </TableCell>
+                            <TableCell className="text-right font-semibold">Rs. {row.price}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

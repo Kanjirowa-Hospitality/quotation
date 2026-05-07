@@ -96,7 +96,7 @@ export default function CategoryDetailPage() {
     const products = data?.data ?? [];
     const categoryName = products[0]?.category?.name;
     const productCount = data?.pagination.total ?? 0;
-    const itemCount = products.reduce((total, product) => total + (product.items?.length ?? 0), 0);
+    const saleOptionCount = products.reduce((total, product) => total + (product.items?.length ?? 0), 0);
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
@@ -126,7 +126,7 @@ export default function CategoryDetailPage() {
                             {categoryName || "Category"}
                         </h2>
                         <p className="text-sm text-muted-foreground">
-                            {productCount} products - {itemCount} items on this page
+                            {productCount} products - {saleOptionCount} sale options on this page
                         </p>
                     </div>
 
@@ -144,7 +144,7 @@ export default function CategoryDetailPage() {
                             {isSelecting && <TableHead className="w-10">Select</TableHead>}
                             <TableHead className="w-16">Image</TableHead>
                             <TableHead>Product</TableHead>
-                            <TableHead className="text-right">Items</TableHead>
+                            <TableHead className="text-right">Sale Options</TableHead>
                             <TableHead className="text-right">Price</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -185,7 +185,7 @@ export default function CategoryDetailPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon-sm"
-                                                aria-label={`${isExpanded ? "Hide" : "View"} ${product.name} items`}
+                                                aria-label={`${isExpanded ? "Hide" : "View"} ${product.name} sale options`}
                                                 onClick={(event) => {
                                                     event.stopPropagation();
                                                     toggleExpanded(product.id);
@@ -199,7 +199,7 @@ export default function CategoryDetailPage() {
                                                 <Checkbox
                                                     checked={isProductSelected}
                                                     disabled={!hasItems}
-                                                    aria-label={`Select all ${product.name} items`}
+                                                    aria-label={`Select all ${product.name} sale options`}
                                                     onCheckedChange={() => toggleSelectionGroup(productCartItems)}
                                                 />
                                             </TableCell>
@@ -223,18 +223,20 @@ export default function CategoryDetailPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    className="cursor-pointer"
                                                     aria-label={`Edit ${product.name}`}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         router.push(`/admin/products/${product.id}`);
                                                     }}
                                                 >
-                                                    <Pencil className="text-yellow-500" />
+                                                    <Pencil className="cursor-pointer text-yellow-500" />
                                                 </Button>
 
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    className="cursor-pointer"
                                                     aria-label={`Delete ${product.name}`}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -242,7 +244,7 @@ export default function CategoryDetailPage() {
                                                         deleteMutation.mutate(product.id);
                                                     }}
                                                 >
-                                                    <Trash2 className="text-red-500" />
+                                                    <Trash2 className="cursor-pointer text-red-500" />
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -253,14 +255,14 @@ export default function CategoryDetailPage() {
                                             <TableCell colSpan={isSelecting ? 7 : 6} className="bg-muted/30 p-0">
                                                 <div className="px-4 py-3">
                                                     {(product.items?.length ?? 0) === 0 ? (
-                                                        <p className="text-sm text-muted-foreground">No items added.</p>
+                                                        <p className="text-sm text-muted-foreground">No sale options added.</p>
                                                     ) : (
                                                         <table className="w-full text-xs">
                                                             <thead>
                                                                 <tr className="border-b">
                                                                     {isSelecting && <th className="w-10 py-2 text-left font-medium">Select</th>}
                                                                     <th className="py-2 text-left font-medium">Description</th>
-                                                                    <th className="py-2 text-left font-medium">Attributes</th>
+                                                                    <th className="py-2 text-left font-medium">Specs / Sale Basis</th>
                                                                     <th className="py-2 text-right font-medium">Price</th>
                                                                     <th className="py-2 text-right font-medium">Action</th>
                                                                 </tr>

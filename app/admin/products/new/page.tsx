@@ -195,8 +195,8 @@ export default function NewProductPage() {
                                         }
                                     />
 
-                                    <Button variant="ghost" onClick={() => removeItem(i)}>
-                                        <Trash2 size={16} />
+                                    <Button className="cursor-pointer" variant="ghost" onClick={() => removeItem(i)}>
+                                        <Trash2 className="cursor-pointer" size={16} />
                                     </Button>
                                 </div>
 
@@ -224,9 +224,10 @@ export default function NewProductPage() {
 
                                             <Button
                                                 variant="ghost"
+                                                className="cursor-pointer"
                                                 onClick={() => removeAttribute(i, j)}
                                             >
-                                                <Trash2 size={16} />
+                                                <Trash2 className="cursor-pointer" size={16} />
                                             </Button>
                                         </div>
                                     ))}

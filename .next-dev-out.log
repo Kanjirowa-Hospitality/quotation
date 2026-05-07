@@ -1,0 +1,41 @@
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.56.1:3000
+- Environments: .env
+✓ Ready in 999ms
+Creating turbopack project {
+  dir: 'C:\\Users\\gauta\\Desktop\\kanjirowa\\quotation',
+  testMode: true
+}
+
+ GET /quotation/edit 200 in 982ms (next.js: 442ms, application-code: 540ms)
+ POST /api/quotation/export 500 in 730ms (next.js: 426ms, application-code: 304ms)
+ GET /quotation/edit 200 in 306ms (next.js: 73ms, application-code: 234ms)
+ GET /quotation/edit 200 in 185ms (next.js: 6ms, application-code: 180ms)
+ GET /quotation/edit 200 in 169ms (next.js: 7ms, application-code: 162ms)
+ GET /quotation/edit 200 in 170ms (next.js: 28ms, application-code: 142ms)
+ GET /quotation/edit 200 in 170ms (next.js: 91ms, application-code: 79ms)
+ GET /quotation/edit 200 in 173ms (next.js: 56ms, application-code: 117ms)
+ GET /quotation/edit 200 in 111ms (next.js: 8ms, application-code: 102ms)
+ GET /quotation/edit 200 in 75ms (next.js: 12ms, application-code: 63ms)
+ GET /quotation/edit 200 in 39ms (next.js: 3ms, application-code: 36ms)
+ POST /api/quotation/export 200 in 318ms (next.js: 275ms, application-code: 43ms)
+ POST /api/quotation/export 200 in 34ms (next.js: 10ms, application-code: 24ms)
+ POST /api/quotation/export 200 in 28ms (next.js: 3ms, application-code: 25ms)
+ POST /api/quotation/export 200 in 3.4s (next.js: 7ms, application-code: 3.4s)
+ POST /api/quotation/export 200 in 28ms (next.js: 6ms, application-code: 21ms)
+ GET /quotation/edit 200 in 160ms (next.js: 75ms, application-code: 85ms)
+ GET /quotation/edit 200 in 67ms (next.js: 4ms, application-code: 63ms)
+ GET /quotation/edit 200 in 38ms (next.js: 3ms, application-code: 34ms)
+ GET /quotation/edit 200 in 124ms (next.js: 35ms, application-code: 89ms)
+ GET /quotation/edit 200 in 64ms (next.js: 5ms, application-code: 59ms)
+ GET /quotation/edit 200 in 26ms (next.js: 2ms, application-code: 24ms)
+ GET /quotation/edit 200 in 71ms (next.js: 39ms, application-code: 32ms)
+ GET /quotation/edit 200 in 75ms (next.js: 41ms, application-code: 34ms)
+ GET /quotation/edit 200 in 168ms (next.js: 39ms, application-code: 128ms)
+ GET /quotation/edit 200 in 97ms (next.js: 6ms, application-code: 91ms)
+ GET /quotation/edit 200 in 50ms (next.js: 26ms, application-code: 23ms)
+ GET /quotation/edit 200 in 52ms (next.js: 4ms, application-code: 49ms)
+ GET /quotation/edit 200 in 81ms (next.js: 51ms, application-code: 31ms)
+ POST /api/quotation/export 200 in 215ms (next.js: 202ms, application-code: 14ms)
+ POST /api/quotation/export 500 in 5.6s (next.js: 163ms, application-code: 5.4s)

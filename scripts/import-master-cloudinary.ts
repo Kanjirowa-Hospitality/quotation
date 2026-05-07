@@ -33,6 +33,8 @@ const RESERVED_COLUMNS = new Set([
   "productImageUrl",
   "sourceImage",
   "price",
+  "unit",
+  "quantity",
   "description",
 ]);
 
@@ -56,6 +58,13 @@ function normalizeHeader(header: string) {
     price: "price",
     rate: "price",
     amount: "price",
+    unit: "unit",
+    sellingunit: "unit",
+    sellingbasis: "unit",
+    basis: "unit",
+    per: "unit",
+    quantity: "quantity",
+    qty: "quantity",
     description: "description",
     itemdescription: "description",
     label: "description",
@@ -98,6 +107,17 @@ function getAttributes(row: ExcelRow) {
       .filter(([key, value]) => !RESERVED_COLUMNS.has(key) && valueToString(value))
       .map(([key, value]) => [key, valueToString(value)])
   );
+}
+
+function getVariantKey(productId: string, row: ExcelRow) {
+  return JSON.stringify({
+    productId,
+    description: valueToString(row.description).toLowerCase(),
+    weight: valueToString(row.weight).toLowerCase(),
+    size: valueToString(row.size).toLowerCase(),
+    color: valueToString(row.color).toLowerCase(),
+    attributes: getAttributes(row),
+  });
 }
 
 function getLocalImagePath(value: unknown) {
@@ -310,14 +330,20 @@ async function main() {
 
   let createdCategories = 0;
   let createdProducts = 0;
-  let createdItems = 0;
-  let skippedItems = 0;
+  let createdVariants = 0;
+  let createdSaleOptions = 0;
   let updatedProductImages = 0;
   let updatedCategoryImages = 0;
   const categoryIds = new Map<string, string>();
   const productIds = new Map<string, string>();
+  const variantIds = new Map<string, string>();
 
   try {
+    await prisma.saleOption.deleteMany();
+    await prisma.productVariant.deleteMany();
+    await prisma.product.deleteMany();
+    await prisma.category.deleteMany();
+
     for (const [index, row] of rows.entries()) {
       const rowNumber = index + 2;
       const categoryName = valueToString(row.category);
@@ -415,31 +441,37 @@ async function main() {
         updatedProductImages += productUpdate.count;
       }
 
-      const description = valueToString(row.description) || null;
-      const attributes = getAttributes(row);
-      const existingItem = await prisma.item.findFirst({
-        where: {
-          productId,
-          price,
-          description,
-          attributes: { equals: attributes },
-        },
-        select: { id: true },
-      });
+      const variantKey = getVariantKey(productId, row);
+      let variantId = variantIds.get(variantKey);
 
-      if (existingItem) {
-        skippedItems += 1;
-      } else {
-        await prisma.item.create({
+      if (!variantId) {
+        const variant = await prisma.productVariant.create({
           data: {
             productId,
-            price,
-            description,
-            attributes,
+            description: valueToString(row.description) || null,
+            weight: valueToString(row.weight) || null,
+            size: valueToString(row.size) || null,
+            color: valueToString(row.color) || null,
+            attributes: getAttributes(row),
           },
+          select: { id: true },
         });
-        createdItems += 1;
+
+        variantId = variant.id;
+        variantIds.set(variantKey, variantId);
+        createdVariants += 1;
       }
+
+      await prisma.saleOption.create({
+        data: {
+          variantId,
+          unit: valueToString(row.unit) || "unit",
+          quantity: valueToString(row.quantity) || null,
+          price,
+          attributes: {},
+        },
+      });
+      createdSaleOptions += 1;
 
       if ((index + 1) % 25 === 0 || index + 1 === rows.length) {
         console.log(`Imported ${index + 1}/${rows.length} master rows...`);
@@ -452,8 +484,7 @@ async function main() {
   console.log(
     [
       `Uploaded ${uploadedImages} new Cloudinary images.`,
-      `Created ${createdCategories} categories, ${createdProducts} products, ${createdItems} items.`,
-      `Skipped ${skippedItems} existing items.`,
+      `Created ${createdCategories} categories, ${createdProducts} products, ${createdVariants} variants, ${createdSaleOptions} sale options.`,
       `Updated ${updatedCategoryImages} category image URLs and ${updatedProductImages} product image URLs.`,
     ].join(" ")
   );

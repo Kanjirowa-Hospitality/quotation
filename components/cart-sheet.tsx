@@ -82,10 +82,11 @@ export function CartSheet() {
                                                 <Button
                                                     size="icon-sm"
                                                     variant="ghost"
+                                                    className="cursor-pointer"
                                                     onClick={() => remove(item.itemId)}
                                                     aria-label={`Remove ${item.productName}`}
                                                 >
-                                                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                                    <Trash2 className="h-4 w-4 cursor-pointer text-muted-foreground" />
                                                 </Button>
                                             )}
                                         </div>
@@ -121,11 +122,12 @@ export function CartSheet() {
                     <Button
                         size="icon"
                         variant="outline"
+                        className="cursor-pointer"
                         disabled={items.length === 0}
                         onClick={clear}
                         aria-label="Clear cart"
                     >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 cursor-pointer" />
                     </Button>
                 </div>
             </div>

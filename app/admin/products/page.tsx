@@ -127,7 +127,7 @@ export default function AdminProductsPage() {
                             <TableHead className="w-16">Image</TableHead>
                             <TableHead>Product</TableHead>
                             <TableHead>Category</TableHead>
-                            <TableHead className="text-right">Items</TableHead>
+                            <TableHead className="text-right">Sale Options</TableHead>
                             <TableHead className="text-right">Price</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -176,7 +176,7 @@ export default function AdminProductsPage() {
                                             <Checkbox
                                                 checked={isProductSelected}
                                                 disabled={!hasItems}
-                                                aria-label={`Select all ${product.name} items`}
+                                                aria-label={`Select all ${product.name} sale options`}
                                                 onCheckedChange={() => toggleSelectionGroup(productCartItems)}
                                             />
                                         </TableCell>
@@ -201,18 +201,20 @@ export default function AdminProductsPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
+                                                className="cursor-pointer"
                                                 aria-label={`Edit ${product.name}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     router.push(`/admin/products/${product.id}`);
                                                 }}
                                             >
-                                                <Pencil className="text-yellow-500" />
+                                                <Pencil className="cursor-pointer text-yellow-500" />
                                             </Button>
 
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
+                                                className="cursor-pointer"
                                                 aria-label={`Delete ${product.name}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -220,7 +222,7 @@ export default function AdminProductsPage() {
                                                     deleteMutation.mutate(product.id);
                                                 }}
                                             >
-                                                <Trash2 className="text-red-500" />
+                                                <Trash2 className="cursor-pointer text-red-500" />
                                             </Button>
                                         </div>
                                     </TableCell>

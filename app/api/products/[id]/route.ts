@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withFlattenedItems } from "@/lib/product-response";
 
-// ✅ GET ONE PRODUCT (WITH ITEMS)
 export async function GET(
     req: Request,
     context: { params: Promise<{ id: string }> }
@@ -12,7 +12,11 @@ export async function GET(
         where: { id },
         include: {
             category: true,
-            items: true, // ✅ IMPORTANT
+            variants: {
+                include: {
+                    saleOptions: true,
+                },
+            },
         },
     });
 
@@ -23,9 +27,8 @@ export async function GET(
         );
     }
 
-    return NextResponse.json(product);
+    return NextResponse.json(withFlattenedItems(product));
 }
-
 
 export async function PUT(
     req: Request,
@@ -34,37 +37,56 @@ export async function PUT(
     const { id } = await context.params;
     const body = await req.json();
 
-    const { name, categoryId, imageUrl, items } = body;
+    const { name, categoryId, imageUrl, items, variants } = body;
+    const variantInput = variants ?? (items ?? []).map((item: any) => ({
+        description: item.description,
+        attributes: item.attributes || {},
+        saleOptions: [{
+            price: item.price,
+            unit: item.unit || "unit",
+        }],
+    }));
 
-    // 1. delete existing items
-    await prisma.item.deleteMany({
+    await prisma.productVariant.deleteMany({
         where: { productId: id },
     });
 
-    // 2. recreate items
     const updated = await prisma.product.update({
         where: { id },
         data: {
             name,
             categoryId,
             imageUrl,
-            items: {
-                create: items.map((item: any) => ({
-                    price: item.price,
-                    description: item.description,
-                    attributes: item.attributes || {},
+            variants: {
+                create: variantInput.map((variant: any) => ({
+                    description: variant.description,
+                    weight: variant.weight || null,
+                    size: variant.size || null,
+                    color: variant.color || null,
+                    attributes: variant.attributes || {},
+                    saleOptions: {
+                        create: (variant.saleOptions ?? []).map((option: any) => ({
+                            price: option.price,
+                            unit: option.unit || "unit",
+                            quantity: option.quantity || null,
+                            attributes: option.attributes || {},
+                        })),
+                    },
                 })),
             },
         },
         include: {
-            items: true,
+            variants: {
+                include: {
+                    saleOptions: true,
+                },
+            },
             category: true,
         },
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json(withFlattenedItems(updated));
 }
-
 
 export async function DELETE(
     req: Request,

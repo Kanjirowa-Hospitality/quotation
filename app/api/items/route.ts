@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { variantAttributes } from '@/lib/product-response'
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
@@ -10,28 +11,59 @@ export async function GET(req: Request) {
 
     const where: any = {}
     if (search) {
-        where.product = { name: { contains: search, mode: 'insensitive' } }
+        where.variant = {
+            OR: [
+                { description: { contains: search, mode: 'insensitive' } },
+                { product: { name: { contains: search, mode: 'insensitive' } } },
+            ],
+        }
     }
     if (category) {
-        where.product = { ...where.product, category: { slug: category } }
+        where.variant = {
+            ...where.variant,
+            product: {
+                ...where.variant?.product,
+                category: { slug: category },
+            },
+        }
     }
+
+    const include = {
+        variant: {
+            include: {
+                product: {
+                    include: {
+                        category: true,
+                    },
+                },
+            },
+        },
+    }
+
+    const mapSaleOption = (saleOption: any) => ({
+        id: saleOption.id,
+        price: saleOption.price,
+        description: saleOption.variant.description,
+        attributes: variantAttributes(saleOption.variant, saleOption),
+        product: saleOption.variant.product,
+    })
 
     if (pageParam) {
         const page = Math.max(Number(pageParam) || 1, 1)
         const pageSize = Math.min(Math.max(Number(pageSizeParam) || 25, 1), 100)
         const [items, total] = await Promise.all([
-            prisma.item.findMany({
+            prisma.saleOption.findMany({
                 where,
-                include: { product: { include: { category: true } } },
+                include,
                 orderBy: { createdAt: 'desc' },
                 skip: (page - 1) * pageSize,
                 take: pageSize,
             }),
-            prisma.item.count({ where }),
+            prisma.saleOption.count({ where }),
         ])
 
         return NextResponse.json({
-            data: items,
+            data: items.map(mapSaleOption),
             pagination: {
                 page,
                 pageSize,
@@ -41,10 +73,10 @@ export async function GET(req: Request) {
         })
     }
 
-    const items = await prisma.item.findMany({
+    const items = await prisma.saleOption.findMany({
         where,
-        include: { product: { include: { category: true } } },
+        include,
         orderBy: { createdAt: 'desc' },
     })
-    return NextResponse.json(items)
+    return NextResponse.json(items.map(mapSaleOption))
 }

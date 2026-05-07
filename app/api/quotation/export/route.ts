@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import JSZip from 'jszip'
-import { readFile } from 'fs/promises'
+import { execFile } from 'child_process'
+import { mkdtemp, readFile, rm, writeFile } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { promisify } from 'util'
 import {
     AlignmentType,
     BorderStyle,
@@ -21,9 +25,10 @@ import {
     VerticalMergeType,
     WidthType,
 } from 'docx'
-import PDFDocument from 'pdfkit'
 
 export const runtime = 'nodejs'
+
+const execFileAsync = promisify(execFile)
 
 type ExportFormat = 'excel' | 'word' | 'pdf'
 type ExportField = 'name' | 'image' | 'description' | 'price'
@@ -52,17 +57,6 @@ let templateDocxPromise: Promise<JSZip | null> | null = null
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Stream a pdfkit document to a Buffer */
-function pdfToBuffer(doc: InstanceType<typeof PDFDocument>): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-        const chunks: Buffer[] = []
-        doc.on('data', (chunk: Buffer) => chunks.push(chunk))
-        doc.on('end', () => resolve(Buffer.concat(chunks)))
-        doc.on('error', reject)
-        doc.end()
-    })
-}
 
 /** Build response with correct headers so browsers trigger a file download */
 function fileResponse(buffer: Buffer, contentType: string, filename: string): NextResponse {
@@ -149,13 +143,128 @@ function paragraph(
     })
 }
 
-function formatAttributes(attributes?: Record<string, unknown> | null) {
-    if (!attributes) return ''
+function attributeValue(attributes: Record<string, unknown> | null | undefined, key: string) {
+    const value = attributes?.[key]
+    return value === undefined || value === null ? '' : String(value).trim()
+}
 
-    return Object.entries(attributes)
-        .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '')
-        .map(([key, value]) => `${key}: ${String(value)}`)
-        .join(', ')
+function normalizeDetail(value: string) {
+    return value.toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+function uniqueDetails(values: string[]) {
+    const seen = new Set<string>()
+    return values.filter((value) => {
+        const cleanValue = value.trim()
+        const key = normalizeDetail(cleanValue)
+        if (!cleanValue || seen.has(key)) return false
+        seen.add(key)
+        return true
+    })
+}
+
+function formatDescriptionDetails(item: ExportItem) {
+    const standardKeys = new Set(['size', 'weight', 'color', 'unit', 'quantity'])
+    const extraAttributes = Object.entries(item.attributes ?? {})
+        .filter(([key, value]) => !standardKeys.has(key) && value !== undefined && value !== null)
+        .map(([, value]) => String(value).trim())
+
+    return uniqueDetails([
+        item.description?.trim() ?? '',
+        attributeValue(item.attributes, 'size'),
+        attributeValue(item.attributes, 'weight'),
+        attributeValue(item.attributes, 'color'),
+        ...extraAttributes,
+    ]).join(', ') || '-'
+}
+
+function formatUnit(item: ExportItem) {
+    const unit = attributeValue(item.attributes, 'unit')
+    const quantity = attributeValue(item.attributes, 'quantity')
+    const shouldShowQuantity = quantity && !['1', '1.0', '1.00'].includes(quantity)
+
+    if (unit && shouldShowQuantity) return `${unit} (${quantity})`
+    return unit || quantity || '-'
+}
+
+function descriptionMergeFor(group: ExportItem[], itemIndex: number) {
+    const current = formatDescriptionDetails(group[itemIndex])
+    const previous = itemIndex > 0 ? formatDescriptionDetails(group[itemIndex - 1]) : null
+    const next = itemIndex < group.length - 1 ? formatDescriptionDetails(group[itemIndex + 1]) : null
+
+    if (previous === current) return VerticalMergeType.CONTINUE
+    if (next === current) return VerticalMergeType.RESTART
+    return undefined
+}
+
+function formatPrice(priceValue?: number | string) {
+    const price = String(priceValue ?? '').trim()
+    if (!price) return '-'
+    return price.toLowerCase().startsWith('rs') || price === '-' ? price : `Rs.${price}`
+}
+
+function formatExcelPrice(priceValue?: number | string) {
+    const price = String(priceValue ?? '').replace(/^rs\.?\s*/i, '').trim()
+    const parsed = Number(price.replace(/,/g, ''))
+    return Number.isFinite(parsed) ? parsed : price
+}
+
+async function convertDocxToPdf(docxBuffer: Buffer) {
+    const workdir = await mkdtemp(join(tmpdir(), 'quotation-export-'))
+    const docxPath = join(workdir, 'quotation.docx')
+    const pdfPath = join(workdir, 'quotation.pdf')
+
+    try {
+        await writeFile(docxPath, docxBuffer)
+
+        try {
+            await execFileAsync('soffice', [
+                '--headless',
+                '--convert-to',
+                'pdf',
+                '--outdir',
+                workdir,
+                docxPath,
+            ])
+            return await readFile(pdfPath)
+        } catch {
+            // Fall through to Word automation on Windows.
+        }
+
+        const script = [
+            '$ErrorActionPreference = "Stop"',
+            `$docx = ${JSON.stringify(docxPath)}`,
+            `$pdf = ${JSON.stringify(pdfPath)}`,
+            '$word = $null',
+            '$doc = $null',
+            'try {',
+            '$word = New-Object -ComObject Word.Application',
+            '$word.Visible = $false',
+            '$doc = $word.Documents.Open($docx)',
+            '$doc.SaveAs([ref] $pdf, [ref] 17)',
+            '} finally {',
+            'if ($doc -ne $null) { try { $doc.Close($false) } catch {} }',
+            'if ($word -ne $null) { try { $word.Quit() } catch {} }',
+            '}',
+            'if (!(Test-Path $pdf)) { throw "Word did not create the PDF file." }',
+        ].join('; ')
+
+        try {
+            await execFileAsync('powershell.exe', ['-NoProfile', '-Command', script], {
+                timeout: 120000,
+            })
+        } catch (error) {
+            try {
+                return await readFile(pdfPath)
+            } catch {
+                throw error
+            }
+        }
+
+        return await readFile(pdfPath)
+    } finally {
+        await rm(workdir, { recursive: true, force: true })
+    }
 }
 
 function tableBorders(size = 4) {
@@ -246,26 +355,18 @@ export async function POST(req: NextRequest) {
     const customerAddress = meta?.customerAddress?.trim() || 'Begnas Lake, Pachbhaiva- 31, Pokhara'
     const quotationTitle = meta?.quotationTitle?.trim() || 'Kible Quotation 2083'
 
-    // Build header list in a fixed, predictable order
-    const headers: string[] = []
-    if (fields.includes('name')) headers.push('Product')
-    if (fields.includes('image')) headers.push('Image')
-    if (fields.includes('description')) headers.push('Description')
-    if (fields.includes('price')) headers.push('Price')
-
-    // Map each item to a plain object keyed by the chosen headers
-    const rows: Record<string, string>[] = items.map((i) => {
-        const r: Record<string, string> = {}
-        if (fields.includes('name')) r['Product'] = i.productName ?? ''
-        if (fields.includes('image')) r['Image'] = i.imageUrl ?? ''
-        if (fields.includes('description')) r['Description'] = i.description ?? ''
-        if (fields.includes('price')) r['Price'] = String(i.price ?? '')
-        return r
-    })
+    const excelHeaders = ['S.N', 'Product', 'Description', 'Unit', 'Price']
+    const excelRows: Record<string, string | number>[] = items.map((item, index) => ({
+        'S.N': String(index + 1),
+        Product: item.productName ?? '',
+        Description: formatDescriptionDetails(item),
+        Unit: formatUnit(item),
+        Price: formatExcelPrice(item.price),
+    }))
 
     // ---------- Excel ----------
     if (format === 'excel') {
-        const ws = XLSX.utils.json_to_sheet(rows, { header: headers })
+        const ws = XLSX.utils.json_to_sheet(excelRows, { header: excelHeaders })
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, 'Quotation')
 
@@ -277,10 +378,9 @@ export async function POST(req: NextRequest) {
         )
     }
 
-    // ---------- Word ----------
-    if (format === 'word') {
-        const templateHeaders = ['S.N', 'Image', 'Name', 'Description', 'Price per unit']
-        const columnWidths = [606, 1590, 1500, 3900, 2069]
+    const buildWordBuffer = async () => {
+        const templateHeaders = ['S.N', 'Image', 'Name', 'Description', 'Unit', 'Price']
+        const columnWidths = [606, 1400, 1450, 3300, 1100, 1809]
         const cellBorder = tableBorders(4)
 
         const tableTextCell = (
@@ -388,15 +488,10 @@ export async function POST(req: NextRequest) {
                     const verticalMerge = isFirstVariant
                         ? VerticalMergeType.RESTART
                         : VerticalMergeType.CONTINUE
-                    const description = item.description?.trim() ?? ''
-                    const attributes = formatAttributes(item.attributes)
-                    const descriptionText = [description, attributes].filter(Boolean).join(', ') || '-'
-                    const price = String(item.price ?? '').trim()
-                    const formattedPrice = price
-                        ? price.toLowerCase().startsWith('rs') || price === '-'
-                            ? price
-                            : `Rs.${price}`
-                        : '-'
+                    const descriptionText = formatDescriptionDetails(item)
+                    const descriptionMerge = descriptionMergeFor(group, itemIndex)
+                    const unitText = formatUnit(item)
+                    const formattedPrice = formatPrice(item.price)
 
                     const cells = [
                         tableTextCell(isFirstVariant ? `${index + 1}.` : '', {
@@ -419,11 +514,15 @@ export async function POST(req: NextRequest) {
                                 verticalMerge,
                             }
                         ),
-                        tableTextCell(fields.includes('description') ? descriptionText : '', {
+                        tableTextCell(fields.includes('description') && descriptionMerge !== VerticalMergeType.CONTINUE ? descriptionText : '', {
                             width: columnWidths[3],
+                            verticalMerge: descriptionMerge,
+                        }),
+                        tableTextCell(unitText, {
+                            width: columnWidths[4],
                         }),
                         tableTextCell(fields.includes('price') ? formattedPrice : '', {
-                            width: columnWidths[4],
+                            width: columnWidths[5],
                         }),
                     ]
 
@@ -492,7 +591,7 @@ export async function POST(req: NextRequest) {
                         table,
                         new Paragraph({
                             spacing: { before: 240, after: 160 },
-                            children: [textRun('PRICES ARE INCLUSIVE OF 13% VAT', { bold: true, size: 22 })],
+                            children: [textRun('PRICES ARE EXCLUSIVE OF 13% VAT', { bold: true, size: 22 })],
                         }),
                         paragraph(
                             'Disclaimer: Due to current fluctuations in pricing of raw material and stock availability, prices and stock mentioned in this quotation are subject to confirmation before order finalization.',
@@ -507,7 +606,12 @@ export async function POST(req: NextRequest) {
             ],
         })
 
-        const buffer = await patchTemplateHeaderFooter(await Packer.toBuffer(doc))
+        return patchTemplateHeaderFooter(await Packer.toBuffer(doc))
+    }
+
+    // ---------- Word ----------
+    if (format === 'word') {
+        const buffer = await buildWordBuffer()
         return fileResponse(
             buffer,
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -517,56 +621,7 @@ export async function POST(req: NextRequest) {
 
     // ---------- PDF ----------
     if (format === 'pdf') {
-        const doc = new PDFDocument({ margin: 40, size: 'A4' })
-
-        // Title
-        doc
-            .font('Helvetica-Bold')
-            .fontSize(18)
-            .text('Quotation', { align: 'left' })
-            .moveDown(0.5)
-
-        // Table geometry
-        const usableWidth = doc.page.width - 80          // left + right margin
-        const colWidth = usableWidth / headers.length
-        const rowHeight = 20
-        const headerHeight = 22
-
-        const x = doc.page.margins.left
-        let y = doc.y
-
-        /** Draw a single cell rectangle + text */
-        const drawCell = (
-            text: string,
-            cx: number,
-            cy: number,
-            w: number,
-            h: number,
-            bold = false,
-        ) => {
-            doc.rect(cx, cy, w, h).stroke()
-            doc
-                .font(bold ? 'Helvetica-Bold' : 'Helvetica')
-                .fontSize(9)
-                .text(text, cx + 4, cy + 5, { width: w - 8, ellipsis: true, lineBreak: false })
-        }
-
-        // Header row
-        headers.forEach((h, i) => drawCell(h, x + i * colWidth, y, colWidth, headerHeight, true))
-        y += headerHeight
-
-        // Data rows
-        rows.forEach(r => {
-            // Start a new page if we're about to overflow
-            if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
-                doc.addPage()
-                y = doc.page.margins.top
-            }
-            headers.forEach((h, i) => drawCell(r[h] ?? '', x + i * colWidth, y, colWidth, rowHeight))
-            y += rowHeight
-        })
-
-        const buffer = await pdfToBuffer(doc)
+        const buffer = await convertDocxToPdf(await buildWordBuffer())
         return fileResponse(buffer, 'application/pdf', 'quotation.pdf')
     }
 

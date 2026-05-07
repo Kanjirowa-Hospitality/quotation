@@ -369,10 +369,11 @@ export default function EditQuotationPage() {
                                             <Button
                                                 size="icon-sm"
                                                 variant="destructive"
+                                                className="cursor-pointer"
                                                 onClick={() => deleteItem(item.itemId)}
                                                 aria-label={`Delete ${item.productName}`}
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                <Trash2 className="h-4 w-4 cursor-pointer" />
                                             </Button>
                                         </TableCell>
                                     </TableRow>

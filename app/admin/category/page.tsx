@@ -201,7 +201,7 @@ export default function AdminCategoriesPage() {
                                             <Checkbox
                                                 checked={isCategorySelected}
                                                 disabled={!hasItems}
-                                                aria-label={`Select all ${cat.name} products`}
+                                                aria-label={`Select all ${cat.name} sale options`}
                                                 onCheckedChange={() => handleCategorySelection(cat)}
                                             />
                                         </TableCell>
@@ -223,25 +223,27 @@ export default function AdminCategoriesPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
+                                                className="cursor-pointer"
                                                 aria-label={`Edit ${cat.name}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     router.push(`/admin/category/${cat.id}/edit`);
                                                 }}
                                             >
-                                                <Pencil className="text-yellow-500" />
+                                                <Pencil className="cursor-pointer text-yellow-500" />
                                             </Button>
 
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
+                                                className="cursor-pointer"
                                                 aria-label={`Delete ${cat.name}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleDelete(cat.id);
                                                 }}
                                             >
-                                                <Trash2 className="text-red-500" />
+                                                <Trash2 className="cursor-pointer text-red-500" />
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -252,6 +254,9 @@ export default function AdminCategoriesPage() {
                 </table>
             </div>
 
+            <div className="shrink-0 rounded-md border bg-background px-4 py-3 shadow-sm">
+                <PaginationControls pagination={data?.pagination} onPageChange={setPage} />
+            </div>
 
         </div>
     );

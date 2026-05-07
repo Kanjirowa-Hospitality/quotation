@@ -1,24 +1,56 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { CldUploadButton } from "next-cloudinary";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CldUploadButton } from "next-cloudinary";
-import { Plus, Trash2 } from "lucide-react";
 
 type Attribute = {
     key: string;
     value: string;
 };
 
-type Item = {
+type SaleOption = {
     id?: string;
+    unit: string;
+    quantity: string;
     price: string;
-    description: string;
-    attributes: Attribute[];
 };
+
+type Variant = {
+    id?: string;
+    description: string;
+    weight: string;
+    size: string;
+    color: string;
+    attributes: Attribute[];
+    saleOptions: SaleOption[];
+};
+
+function attributesToArray(attributes: Record<string, unknown> | null | undefined): Attribute[] {
+    return Object.entries(attributes ?? {}).map(([key, value]) => ({
+        key,
+        value: String(value),
+    }));
+}
+
+const emptySaleOption = (): SaleOption => ({
+    unit: "unit",
+    quantity: "",
+    price: "",
+});
+
+const emptyVariant = (): Variant => ({
+    description: "",
+    weight: "",
+    size: "",
+    color: "",
+    attributes: [],
+    saleOptions: [emptySaleOption()],
+});
 
 export default function EditProductPage() {
     const router = useRouter();
@@ -26,99 +58,129 @@ export default function EditProductPage() {
     const id = params.id as string;
 
     const [loading, setLoading] = useState(true);
-
     const [name, setName] = useState("");
     const [categoryId, setCategoryId] = useState("");
     const [imageUrl, setImageUrl] = useState("");
+    const [variants, setVariants] = useState<Variant[]>([]);
 
-    const [items, setItems] = useState<Item[]>([]);
-
-    // ---------------- FETCH ----------------
     useEffect(() => {
         const fetchData = async () => {
             const res = await fetch(`/api/products/${id}`);
             const data = await res.json();
 
-            setName(data.name);
-            setCategoryId(data.categoryId);
-            setImageUrl(data.imageUrl || "");
+            setName(data.name ?? "");
+            setCategoryId(data.categoryId ?? "");
+            setImageUrl(data.imageUrl ?? "");
 
-            // convert attributes object → array
-            const formattedItems = data.items.map((item: any) => ({
-                id: item.id,
-                price: String(item.price),
-                description: item.description || "",
-                attributes: item.attributes
-                    ? Object.entries(item.attributes).map(([k, v]) => ({
-                        key: k,
-                        value: String(v),
-                    }))
-                    : [],
-            }));
-
-            setItems(formattedItems);
+            setVariants(
+                (data.variants ?? []).map((variant: any) => ({
+                    id: variant.id,
+                    description: variant.description ?? "",
+                    weight: variant.weight ?? "",
+                    size: variant.size ?? "",
+                    color: variant.color ?? "",
+                    attributes: attributesToArray(variant.attributes),
+                    saleOptions: (variant.saleOptions ?? []).map((option: any) => ({
+                        id: option.id,
+                        unit: option.unit ?? "unit",
+                        quantity: option.quantity ?? "",
+                        price: String(option.price ?? ""),
+                    })),
+                }))
+            );
             setLoading(false);
         };
 
         fetchData();
     }, [id]);
 
-    // ---------------- ITEM HANDLERS ----------------
-    const addItem = () => {
-        setItems([
-            ...items,
-            { price: "", description: "", attributes: [] },
-        ]);
+    const updateVariant = (index: number, patch: Partial<Variant>) => {
+        setVariants((current) =>
+            current.map((variant, variantIndex) =>
+                variantIndex === index ? { ...variant, ...patch } : variant
+            )
+        );
     };
 
-    const removeItem = (index: number) => {
-        const copy = [...items];
-        copy.splice(index, 1);
-        setItems(copy);
+    const addVariant = () => {
+        setVariants((current) => [...current, emptyVariant()]);
     };
 
-    const updateItem = (index: number, field: string, value: string) => {
-        const copy: any = [...items];
-        copy[index][field as keyof Item] = value;
-        setItems(copy);
+    const removeVariant = (index: number) => {
+        setVariants((current) => current.filter((_, variantIndex) => variantIndex !== index));
     };
 
-    // ---------------- ATTRIBUTE ----------------
-    const addAttribute = (itemIndex: number) => {
-        const copy = [...items];
-        copy[itemIndex].attributes.push({ key: "", value: "" });
-        setItems(copy);
+    const updateSaleOption = (variantIndex: number, optionIndex: number, patch: Partial<SaleOption>) => {
+        const variant = variants[variantIndex];
+        updateVariant(variantIndex, {
+            saleOptions: variant.saleOptions.map((option, currentIndex) =>
+                currentIndex === optionIndex ? { ...option, ...patch } : option
+            ),
+        });
+    };
+
+    const addSaleOption = (variantIndex: number) => {
+        const variant = variants[variantIndex];
+        updateVariant(variantIndex, {
+            saleOptions: [...variant.saleOptions, emptySaleOption()],
+        });
+    };
+
+    const removeSaleOption = (variantIndex: number, optionIndex: number) => {
+        const variant = variants[variantIndex];
+        updateVariant(variantIndex, {
+            saleOptions: variant.saleOptions.filter((_, currentIndex) => currentIndex !== optionIndex),
+        });
+    };
+
+    const addAttribute = (variantIndex: number) => {
+        const variant = variants[variantIndex];
+        updateVariant(variantIndex, {
+            attributes: [...variant.attributes, { key: "", value: "" }],
+        });
     };
 
     const updateAttribute = (
-        itemIndex: number,
+        variantIndex: number,
         attrIndex: number,
         field: "key" | "value",
         value: string
     ) => {
-        const copy = [...items];
-        copy[itemIndex].attributes[attrIndex][field] = value;
-        setItems(copy);
+        const variant = variants[variantIndex];
+        updateVariant(variantIndex, {
+            attributes: variant.attributes.map((attribute, currentIndex) =>
+                currentIndex === attrIndex ? { ...attribute, [field]: value } : attribute
+            ),
+        });
     };
 
-    const removeAttribute = (itemIndex: number, attrIndex: number) => {
-        const copy = [...items];
-        copy[itemIndex].attributes.splice(attrIndex, 1);
-        setItems(copy);
+    const removeAttribute = (variantIndex: number, attrIndex: number) => {
+        const variant = variants[variantIndex];
+        updateVariant(variantIndex, {
+            attributes: variant.attributes.filter((_, currentIndex) => currentIndex !== attrIndex),
+        });
     };
 
-    // ---------------- SUBMIT ----------------
     const onSubmit = async () => {
         const payload = {
             name,
             categoryId,
             imageUrl,
-            items: items.map((item) => ({
-                price: parseFloat(item.price),
-                description: item.description,
+            variants: variants.map((variant) => ({
+                description: variant.description,
+                weight: variant.weight,
+                size: variant.size,
+                color: variant.color,
                 attributes: Object.fromEntries(
-                    item.attributes.map((a) => [a.key, a.value])
+                    variant.attributes
+                        .filter((attribute) => attribute.key.trim())
+                        .map((attribute) => [attribute.key, attribute.value])
                 ),
+                saleOptions: variant.saleOptions.map((option) => ({
+                    unit: option.unit || "unit",
+                    quantity: option.quantity,
+                    price: Number(option.price) || 0,
+                })),
             })),
         };
 
@@ -128,32 +190,28 @@ export default function EditProductPage() {
             body: JSON.stringify(payload),
         });
 
-        router.push("/admin/products");
+        router.back();
     };
 
     if (loading) return <div className="p-6">Loading...</div>;
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-2xl p-6 rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
-                <h2 className="text-xl font-semibold mb-6">Edit Product</h2>
+            <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+                <h2 className="mb-6 text-xl font-semibold">Edit Product</h2>
 
-                <div className="space-y-4">
-                    {/* NAME */}
+                <div className="space-y-5">
                     <div>
                         <Label>Name</Label>
                         <Input value={name} onChange={(e) => setName(e.target.value)} />
                     </div>
 
-                    {/* IMAGE */}
                     <div>
                         <Label>Image</Label>
                         <CldUploadButton
-                            uploadPreset="kanjirow_upload"
-                            onSuccess={(res: any) =>
-                                setImageUrl(res.info.secure_url)
-                            }
-                            className="mt-2 px-3 py-2 border rounded-md w-full"
+                            uploadPreset="kanjirowa_upload"
+                            onSuccess={(res: any) => setImageUrl(res.info.secure_url)}
+                            className="mt-2 w-full rounded-md border px-3 py-2"
                         >
                             Replace Image
                         </CldUploadButton>
@@ -161,81 +219,154 @@ export default function EditProductPage() {
                         {imageUrl && (
                             <img
                                 src={imageUrl}
-                                className="h-32 w-full object-cover rounded mt-2"
+                                alt={name}
+                                className="mt-2 h-32 w-full rounded object-cover"
                             />
                         )}
                     </div>
 
-                    {/* ITEMS */}
-                    <div className="space-y-4 pt-4">
-                        <div className="flex justify-between">
-                            <Label>Items</Label>
-                            <Button size="sm" onClick={addItem}>
+                    <div className="space-y-4 pt-2">
+                        <div className="flex items-center justify-between">
+                            <Label>Variants</Label>
+                            <Button size="sm" onClick={addVariant}>
                                 <Plus size={16} />
+                                Variant
                             </Button>
                         </div>
 
-                        {items.map((item, i) => (
-                            <div key={i} className="border p-4 rounded space-y-3">
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="Price"
-                                        value={item.price}
-                                        onChange={(e) =>
-                                            updateItem(i, "price", e.target.value)
-                                        }
-                                    />
-
-                                    <Input
-                                        placeholder="Label"
-                                        value={item.description}
-                                        onChange={(e) =>
-                                            updateItem(i, "description", e.target.value)
-                                        }
-                                    />
-
-                                    <Button onClick={() => removeItem(i)} variant="ghost">
-                                        <Trash2 size={16} />
+                        {variants.map((variant, variantIndex) => (
+                            <div key={variant.id ?? variantIndex} className="space-y-4 rounded-md border p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <p className="font-medium">Variant {variantIndex + 1}</p>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="cursor-pointer"
+                                        aria-label="Remove variant"
+                                        onClick={() => removeVariant(variantIndex)}
+                                    >
+                                        <Trash2 className="cursor-pointer" size={16} />
                                     </Button>
                                 </div>
 
-                                {/* ATTRIBUTES */}
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <div className="md:col-span-2">
+                                        <Label>Description</Label>
+                                        <Input
+                                            value={variant.description}
+                                            onChange={(e) => updateVariant(variantIndex, { description: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label>Weight</Label>
+                                        <Input
+                                            value={variant.weight}
+                                            onChange={(e) => updateVariant(variantIndex, { weight: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label>Size</Label>
+                                        <Input
+                                            value={variant.size}
+                                            onChange={(e) => updateVariant(variantIndex, { size: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label>Color</Label>
+                                        <Input
+                                            value={variant.color}
+                                            onChange={(e) => updateVariant(variantIndex, { color: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="space-y-2">
-                                    {item.attributes.map((attr, j) => (
-                                        <div key={j} className="flex gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label>Sale Options</Label>
+                                        <Button size="sm" variant="outline" onClick={() => addSaleOption(variantIndex)}>
+                                            <Plus size={16} />
+                                            Sale option
+                                        </Button>
+                                    </div>
+
+                                    {variant.saleOptions.map((option, optionIndex) => (
+                                        <div key={option.id ?? optionIndex} className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto]">
                                             <Input
-                                                placeholder="Key"
-                                                value={attr.key}
+                                                placeholder="Unit, e.g. piece, packet, bundle"
+                                                value={option.unit}
                                                 onChange={(e) =>
-                                                    updateAttribute(i, j, "key", e.target.value)
+                                                    updateSaleOption(variantIndex, optionIndex, { unit: e.target.value })
                                                 }
                                             />
                                             <Input
-                                                placeholder="Value"
-                                                value={attr.value}
+                                                placeholder="Quantity"
+                                                value={option.quantity}
                                                 onChange={(e) =>
-                                                    updateAttribute(i, j, "value", e.target.value)
+                                                    updateSaleOption(variantIndex, optionIndex, { quantity: e.target.value })
+                                                }
+                                            />
+                                            <Input
+                                                placeholder="Price"
+                                                value={option.price}
+                                                onChange={(e) =>
+                                                    updateSaleOption(variantIndex, optionIndex, { price: e.target.value })
                                                 }
                                             />
                                             <Button
                                                 variant="ghost"
-                                                onClick={() => removeAttribute(i, j)}
+                                                size="icon"
+                                                className="cursor-pointer"
+                                                aria-label="Remove sale option"
+                                                onClick={() => removeSaleOption(variantIndex, optionIndex)}
                                             >
-                                                <Trash2 size={16} />
+                                                <Trash2 className="cursor-pointer" size={16} />
                                             </Button>
                                         </div>
                                     ))}
+                                </div>
 
-                                    <Button size="sm" onClick={() => addAttribute(i)}>
-                                        + Add Attribute
-                                    </Button>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label>Extra Attributes</Label>
+                                        <Button size="sm" variant="outline" onClick={() => addAttribute(variantIndex)}>
+                                            <Plus size={16} />
+                                            Attribute
+                                        </Button>
+                                    </div>
+
+                                    {variant.attributes.map((attribute, attrIndex) => (
+                                        <div key={attrIndex} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                                            <Input
+                                                placeholder="Key"
+                                                value={attribute.key}
+                                                onChange={(e) =>
+                                                    updateAttribute(variantIndex, attrIndex, "key", e.target.value)
+                                                }
+                                            />
+                                            <Input
+                                                placeholder="Value"
+                                                value={attribute.value}
+                                                onChange={(e) =>
+                                                    updateAttribute(variantIndex, attrIndex, "value", e.target.value)
+                                                }
+                                            />
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="cursor-pointer"
+                                                aria-label="Remove attribute"
+                                                onClick={() => removeAttribute(variantIndex, attrIndex)}
+                                            >
+                                                <Trash2 className="cursor-pointer" size={16} />
+                                            </Button>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* ACTION */}
-                    <div className="flex justify-end pt-4 space-x-3">
+                    <div className="flex justify-end gap-3 pt-4">
                         <Button variant="outline" onClick={() => router.back()}>
                             Cancel
                         </Button>

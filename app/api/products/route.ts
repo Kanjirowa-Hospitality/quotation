@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withFlattenedItems } from "@/lib/product-response";
 
 // ✅ GET ALL PRODUCTS
 export async function GET(req: Request) {
@@ -15,7 +16,9 @@ export async function GET(req: Request) {
                 OR: [
                     { name: { contains: search, mode: "insensitive" } },
                     { category: { name: { contains: search, mode: "insensitive" } } },
-                    { items: { some: { description: { contains: search, mode: "insensitive" } } } },
+                    { variants: { some: { description: { contains: search, mode: "insensitive" } } } },
+                    { variants: { some: { size: { contains: search, mode: "insensitive" } } } },
+                    { variants: { some: { weight: { contains: search, mode: "insensitive" } } } },
                 ],
             }
             : {}),
@@ -29,7 +32,11 @@ export async function GET(req: Request) {
                 where,
                 include: {
                     category: true,
-                    items: true,
+                    variants: {
+                        include: {
+                            saleOptions: true,
+                        },
+                    },
                 },
                 orderBy: { name: "asc" },
                 skip: (page - 1) * pageSize,
@@ -39,7 +46,7 @@ export async function GET(req: Request) {
         ]);
 
         return NextResponse.json({
-            data: products,
+            data: products.map(withFlattenedItems),
             pagination: {
                 page,
                 pageSize,
@@ -53,19 +60,31 @@ export async function GET(req: Request) {
         where,
         include: {
             category: true,
-            items: true,
+            variants: {
+                include: {
+                    saleOptions: true,
+                },
+            },
         },
         orderBy: { name: "asc" },
     });
 
-    return NextResponse.json(products);
+    return NextResponse.json(products.map(withFlattenedItems));
 }
 
 // ✅ CREATE PRODUCT + ITEMS
 export async function POST(req: Request) {
     const body = await req.json();
 
-    const { name, categoryId, imageUrl, items } = body;
+    const { name, categoryId, imageUrl, items, variants } = body;
+    const variantInput = variants ?? (items ?? []).map((item: any) => ({
+        description: item.description,
+        attributes: item.attributes || {},
+        saleOptions: [{
+            price: item.price,
+            unit: item.unit || "unit",
+        }],
+    }));
 
     const product = await prisma.product.create({
         data: {
@@ -73,19 +92,33 @@ export async function POST(req: Request) {
             categoryId,
             imageUrl,
 
-            items: {
-                create: items.map((item: any) => ({
-                    price: item.price,
-                    description: item.description,
-                    attributes: item.attributes || {},
+            variants: {
+                create: variantInput.map((variant: any) => ({
+                    description: variant.description,
+                    weight: variant.weight || null,
+                    size: variant.size || null,
+                    color: variant.color || null,
+                    attributes: variant.attributes || {},
+                    saleOptions: {
+                        create: (variant.saleOptions ?? []).map((option: any) => ({
+                            price: option.price,
+                            unit: option.unit || "unit",
+                            quantity: option.quantity || null,
+                            attributes: option.attributes || {},
+                        })),
+                    },
                 })),
             },
         },
         include: {
-            items: true,
+            variants: {
+                include: {
+                    saleOptions: true,
+                },
+            },
             category: true,
         },
     });
 
-    return NextResponse.json(product);
+    return NextResponse.json(withFlattenedItems(product));
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { withFlattenedItems } from '@/lib/product-response'
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
@@ -52,13 +53,20 @@ export async function GET(req: Request) {
         include: {
             products: {
                 include: {
-                    items: true,
+                    variants: {
+                        include: {
+                            saleOptions: true,
+                        },
+                    },
                 },
             },
         },
         orderBy: { name: 'asc' },
     })
-    return NextResponse.json(cats)
+    return NextResponse.json(cats.map((cat) => ({
+        ...cat,
+        products: cat.products.map(withFlattenedItems),
+    })))
 }
 
 export async function POST(req: Request) {
