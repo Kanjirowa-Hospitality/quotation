@@ -1,10 +1,21 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SearchBar } from "@/components/search-bar";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { PaginationControls, PaginationMeta } from "@/components/pagination-controls";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { CartItem, useCart } from "@/lib/store/cart";
-import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Trash2, Pencil } from "lucide-react";
 
@@ -17,28 +28,52 @@ type CategoryItem = {
 
 type CategoryProduct = {
     id: string;
-    name: string;
-    imageUrl: string | null;
-    items?: CategoryItem[];
 };
 
 type AdminCategory = {
     id: string;
     name: string;
+    description: string | null;
     imageUrl: string | null;
+    _count?: {
+        products: number;
+    };
     products?: CategoryProduct[];
 };
 
+type PaginatedCategories = {
+    data: AdminCategory[];
+    pagination: PaginationMeta;
+};
+
+const PAGE_SIZE = 20;
+
 export default function AdminCategoriesPage() {
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState("");
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<Record<string, boolean>>({});
+    const debouncedSearch = useDebouncedValue(search);
     const router = useRouter();
     const queryClient = useQueryClient();
     const isSelecting = useCart((state) => state.isSelecting);
-    const selectedItems = useCart((state) => state.selectedItems);
     const toggleSelectionGroup = useCart((state) => state.toggleSelectionGroup);
 
-    const { data } = useQuery<AdminCategory[]>({
-        queryKey: ["categories"],
-        queryFn: () => fetch("/api/categories").then((r) => r.json()),
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch]);
+
+    const { data, isLoading, isFetching } = useQuery<PaginatedCategories>({
+        queryKey: ["categories", page, debouncedSearch],
+        queryFn: () => {
+            const params = new URLSearchParams({
+                page: String(page),
+                pageSize: String(PAGE_SIZE),
+            });
+
+            if (debouncedSearch) params.set("search", debouncedSearch);
+
+            return fetch(`/api/categories?${params.toString()}`).then((r) => r.json());
+        },
     });
 
     const deleteMutation = useMutation({
@@ -50,7 +85,6 @@ export default function AdminCategoriesPage() {
             if (!res.ok) throw new Error("Failed to delete");
         },
         onSuccess: () => {
-            // refresh categories
             queryClient.invalidateQueries({ queryKey: ["categories"] });
         },
     });
@@ -62,110 +96,165 @@ export default function AdminCategoriesPage() {
         deleteMutation.mutate(id);
     };
 
+    const handleCategorySelection = async (cat: AdminCategory) => {
+        const res = await fetch(`/api/products?categoryId=${cat.id}`);
+        const products: Array<{
+            name: string;
+            imageUrl: string | null;
+            items?: CategoryItem[];
+        }> = await res.json();
+        const categoryCartItems: CartItem[] = products.flatMap((product) =>
+            (product.items ?? []).map((item) => ({
+                itemId: item.id,
+                productName: product.name,
+                price: item.price,
+                description: item.description ?? undefined,
+                imageUrl: product.imageUrl ?? undefined,
+                attributes: item.attributes,
+            }))
+        );
+
+        toggleSelectionGroup(categoryCartItems);
+        setSelectedCategoryIds((current) => ({
+            ...current,
+            [cat.id]: !current[cat.id],
+        }));
+    };
 
     return (
-        <div className="p-6 space-y-6">
-            {/* HEADER */}
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold">Categories</h2>
+        <div className="flex h-[calc(100vh-3rem)] flex-col gap-4 overflow-hidden">
+            <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h2 className="text-2xl font-semibold">Categories</h2>
+                    <p className="text-sm text-muted-foreground">
+                        {data?.pagination.total ?? 0} categories
+                    </p>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <SearchBar
+                        value={search}
+                        onChange={setSearch}
+                        placeholder="Search categories, slugs, descriptions..."
+                    />
+                    {isFetching && !isLoading && (
+                        <span className="text-sm text-muted-foreground">Searching...</span>
+                    )}
+                </div>
 
                 <Button onClick={() => router.push("/admin/category/new")}>
                     New Category
                 </Button>
+                </div>
             </div>
 
-            {/* GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-                {data?.map((cat) => {
-                    const categoryCartItems: CartItem[] = (cat.products ?? []).flatMap((product) =>
-                        (product.items ?? []).map((item) => ({
-                            itemId: item.id,
-                            productName: product.name,
-                            price: item.price,
-                            description: item.description ?? undefined,
-                            imageUrl: product.imageUrl ?? undefined,
-                            attributes: item.attributes,
-                        }))
-                    );
-                    const hasItems = categoryCartItems.length > 0;
-                    const isCategorySelected =
-                        hasItems && categoryCartItems.every((item) => selectedItems[item.itemId]);
+            <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
+                        <TableRow>
+                            {isSelecting && <TableHead className="w-10">Select</TableHead>}
+                            <TableHead className="w-16">Image</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead className="text-right">Products</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading && (
+                            <TableRow>
+                                <TableCell colSpan={isSelecting ? 6 : 5} className="h-24 text-center">
+                                    Loading categories...
+                                </TableCell>
+                            </TableRow>
+                        )}
 
-                    return (
-                        <div
-                            key={cat.id}
-                            onClick={() => {
-                                if (isSelecting) {
-                                    toggleSelectionGroup(categoryCartItems);
-                                    return;
-                                }
+                        {!isLoading && data?.data.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={isSelecting ? 6 : 5} className="h-24 text-center">
+                                    No categories found.
+                                </TableCell>
+                            </TableRow>
+                        )}
 
-                                router.push(`/admin/category/${cat.id}`);
-                            }}
-                            className={cn(
-                                "relative group h-40 rounded-xl overflow-hidden shadow-md cursor-pointer",
-                                isSelecting && hasItems && "ring-2 ring-primary/30 ring-offset-2",
-                                isCategorySelected && "ring-2 ring-primary ring-offset-2"
-                            )}
-                        >
-                            {/* BACKGROUND IMAGE */}
-                            <img
-                                src={cat.imageUrl || "/placeholder.png"}
-                                alt={cat.name}
-                                className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                            />
+                        {data?.data.map((cat) => {
+                            const productCount = cat._count?.products ?? cat.products?.length ?? 0;
+                            const hasItems = productCount > 0;
+                            const isCategorySelected = Boolean(selectedCategoryIds[cat.id]);
 
-                            {/* DARK OVERLAY */}
-                            <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
+                            return (
+                                <TableRow
+                                    key={cat.id}
+                                    onClick={async () => {
+                                        if (isSelecting) {
+                                            await handleCategorySelection(cat);
+                                            return;
+                                        }
 
-                            {isSelecting && (
-                                <div
-                                    className="absolute right-3 top-3 rounded-lg border border-primary/50 bg-white p-2 shadow-md"
-                                    onClick={(e) => e.stopPropagation()}
+                                        router.push(`/admin/category/${cat.id}`);
+                                    }}
+                                    data-state={isCategorySelected ? "selected" : undefined}
+                                    className="cursor-pointer"
                                 >
-                                    <Checkbox
-                                        checked={isCategorySelected}
-                                        disabled={!hasItems}
-                                        aria-label={`Select all ${cat.name} products`}
-                                        onCheckedChange={() => toggleSelectionGroup(categoryCartItems)}
-                                    />
-                                </div>
-                            )}
+                                    {isSelecting && (
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
+                                            <Checkbox
+                                                checked={isCategorySelected}
+                                                disabled={!hasItems}
+                                                aria-label={`Select all ${cat.name} products`}
+                                                onCheckedChange={() => handleCategorySelection(cat)}
+                                            />
+                                        </TableCell>
+                                    )}
+                                    <TableCell>
+                                        <img
+                                            src={cat.imageUrl || "/placeholder.png"}
+                                            alt={cat.name}
+                                            className="h-12 w-12 rounded object-cover"
+                                        />
+                                    </TableCell>
+                                    <TableCell className="font-medium whitespace-normal">{cat.name}</TableCell>
+                                    <TableCell className="max-w-lg whitespace-normal text-muted-foreground">
+                                        {cat.description || "-"}
+                                    </TableCell>
+                                    <TableCell className="text-right">{productCount}</TableCell>
+                                    <TableCell>
+                                        <div className="flex justify-end gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={`Edit ${cat.name}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    router.push(`/admin/category/${cat.id}/edit`);
+                                                }}
+                                            >
+                                                <Pencil className="text-yellow-500" />
+                                            </Button>
 
-                            {/* CONTENT */}
-                            <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center justify-between">
-                                <h3 className="text-white font-semibold text-lg">
-                                    {cat.name}
-                                </h3>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={`Delete ${cat.name}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(cat.id);
+                                                }}
+                                            >
+                                                <Trash2 className="text-red-500" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </div>
 
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex space-x-2">
-
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDelete(cat.id);
-                                        }}
-
-                                        className="p-2 bg-white/10 hover:bg-red-500/80 rounded-md backdrop-blur cursor-pointer"
-                                    >
-                                        <Trash2 size={16} className="text-white " />
-                                    </button>
-
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            router.push(`/admin/category/${cat.id}/edit`);
-                                        }}
-                                        className="p-2 bg-white/10 hover:bg-yellow-500/80 rounded-md backdrop-blur cursor-pointer"
-                                    >
-                                        <Pencil size={16} className="text-white" />
-                                    </button>
-                                </div>
-
-                            </div>
-                        </div>
-                    );
-                })}
+            <div className="shrink-0 rounded-md border bg-background px-4 py-3 shadow-sm">
+                <PaginationControls pagination={data?.pagination} onPageChange={setPage} />
             </div>
         </div>
     );

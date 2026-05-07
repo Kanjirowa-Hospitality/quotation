@@ -49,7 +49,7 @@ export default function CategoryDetailPage() {
     if (isLoading) return <div className="p-6">Loading...</div>;
 
     const categoryName = data?.[0]?.category?.name;
-    const hasProducts = data?.length > 0;
+    const hasProducts = (data?.length ?? 0) > 0;
 
     return (
         <div className="p-6 space-y-6">

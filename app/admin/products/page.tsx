@@ -1,12 +1,22 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SelectableItemRow } from "@/components/selectable-item-row";
+import { SearchBar } from "@/components/search-bar";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { PaginationControls, PaginationMeta } from "@/components/pagination-controls";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCart, CartItem } from "@/lib/store/cart";
-import { cn } from "@/lib/utils";
 import { Trash2, Pencil } from "lucide-react";
 
 type ProductItem = {
@@ -26,19 +36,51 @@ type AdminProduct = {
     items?: ProductItem[];
 };
 
+type PaginatedProducts = {
+    data: AdminProduct[];
+    pagination: PaginationMeta;
+};
+
+const PAGE_SIZE = 20;
+
+function getPriceRange(items: ProductItem[] = []) {
+    if (items.length === 0) return "-";
+
+    const prices = items.map((item) => item.price);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+
+    return min === max ? `Rs. ${min}` : `Rs. ${min} - ${max}`;
+}
+
 export default function AdminProductsPage() {
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState("");
+    const debouncedSearch = useDebouncedValue(search);
     const router = useRouter();
     const queryClient = useQueryClient();
     const isSelecting = useCart((state) => state.isSelecting);
     const selectedItems = useCart((state) => state.selectedItems);
     const toggleSelectionGroup = useCart((state) => state.toggleSelectionGroup);
 
-    const { data } = useQuery<AdminProduct[]>({
-        queryKey: ["admin-products"],
-        queryFn: () => fetch("/api/products").then((r) => r.json()),
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch]);
+
+    const { data, isLoading, isFetching } = useQuery<PaginatedProducts>({
+        queryKey: ["admin-products", page, debouncedSearch],
+        queryFn: () => {
+            const params = new URLSearchParams({
+                page: String(page),
+                pageSize: String(PAGE_SIZE),
+            });
+
+            if (debouncedSearch) params.set("search", debouncedSearch);
+
+            return fetch(`/api/products?${params.toString()}`).then((r) => r.json());
+        },
     });
 
-    // DELETE PRODUCT
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
             await fetch(`/api/products/${id}`, {
@@ -51,123 +93,148 @@ export default function AdminProductsPage() {
     });
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Products</h2>
+        <div className="flex h-[calc(100vh-3rem)] flex-col gap-4 overflow-hidden">
+            <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h2 className="text-xl font-semibold">Products</h2>
+                    <p className="text-sm text-muted-foreground">
+                        {data?.pagination.total ?? 0} products
+                    </p>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <SearchBar
+                        value={search}
+                        onChange={setSearch}
+                        placeholder="Search products, categories, descriptions..."
+                    />
+                    {isFetching && !isLoading && (
+                        <span className="text-sm text-muted-foreground">Searching...</span>
+                    )}
+                </div>
+
                 <Button onClick={() => router.push("/admin/products/new")}>
                     New Product
                 </Button>
+                </div>
             </div>
 
-            {data?.map((product) => {
-                const productCartItems: CartItem[] = (product.items ?? []).map((item) => ({
-                    itemId: item.id,
-                    productName: product.name,
-                    price: item.price,
-                    description: item.description ?? undefined,
-                    imageUrl: product.imageUrl ?? undefined,
-                    attributes: item.attributes,
-                }));
-                const hasItems = productCartItems.length > 0;
-                const isProductSelected =
-                    hasItems && productCartItems.every((item) => selectedItems[item.itemId]);
-
-                return (
-                    <div
-                        key={product.id}
-                        onClick={() => {
-                            if (isSelecting) {
-                                toggleSelectionGroup(productCartItems);
-                            }
-                        }}
-                        className={cn(
-                            "border rounded-xl p-5 space-y-4 shadow-sm transition-colors",
-                            isSelecting && hasItems && "cursor-pointer hover:border-primary",
-                            isProductSelected && "border-primary bg-primary/5 ring-2 ring-primary/30"
+            <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
+                        <TableRow>
+                            {isSelecting && <TableHead className="w-10">Select</TableHead>}
+                            <TableHead className="w-16">Image</TableHead>
+                            <TableHead>Product</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead className="text-right">Items</TableHead>
+                            <TableHead className="text-right">Price</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading && (
+                            <TableRow>
+                                <TableCell colSpan={isSelecting ? 7 : 6} className="h-24 text-center">
+                                    Loading products...
+                                </TableCell>
+                            </TableRow>
                         )}
-                    >
-                    {/* PRODUCT HEADER */}
-                    <div className="flex justify-between items-center">
-                        <div className="flex gap-4 items-center">
-                            {isSelecting && (
-                                <div
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="rounded-lg border border-primary/40 bg-primary/10 p-2 shadow-sm"
+
+                        {!isLoading && data?.data.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={isSelecting ? 7 : 6} className="h-24 text-center">
+                                    No products found.
+                                </TableCell>
+                            </TableRow>
+                        )}
+
+                        {data?.data.map((product) => {
+                            const productCartItems: CartItem[] = (product.items ?? []).map((item) => ({
+                                itemId: item.id,
+                                productName: product.name,
+                                price: item.price,
+                                description: item.description ?? undefined,
+                                imageUrl: product.imageUrl ?? undefined,
+                                attributes: item.attributes,
+                            }));
+                            const hasItems = productCartItems.length > 0;
+                            const isProductSelected =
+                                hasItems && productCartItems.every((item) => selectedItems[item.itemId]);
+
+                            return (
+                                <TableRow
+                                    key={product.id}
+                                    onClick={() => {
+                                        if (isSelecting) toggleSelectionGroup(productCartItems);
+                                    }}
+                                    data-state={isProductSelected ? "selected" : undefined}
+                                    className={isSelecting && hasItems ? "cursor-pointer" : undefined}
                                 >
-                                    <Checkbox
-                                        checked={isProductSelected}
-                                        disabled={!hasItems}
-                                        aria-label={`Select all ${product.name} items`}
-                                        onCheckedChange={() => toggleSelectionGroup(productCartItems)}
-                                    />
-                                </div>
-                            )}
-                            <img
-                                src={product.imageUrl || "/placeholder.png"}
-                                alt={product.name}
-                                className="h-14 w-14 rounded object-cover"
-                            />
+                                    {isSelecting && (
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
+                                            <Checkbox
+                                                checked={isProductSelected}
+                                                disabled={!hasItems}
+                                                aria-label={`Select all ${product.name} items`}
+                                                onCheckedChange={() => toggleSelectionGroup(productCartItems)}
+                                            />
+                                        </TableCell>
+                                    )}
+                                    <TableCell>
+                                        <img
+                                            src={product.imageUrl || "/placeholder.png"}
+                                            alt={product.name}
+                                            className="h-12 w-12 rounded object-cover"
+                                        />
+                                    </TableCell>
+                                    <TableCell className="font-medium whitespace-normal">
+                                        {product.name}
+                                    </TableCell>
+                                    <TableCell>{product.category?.name || "-"}</TableCell>
+                                    <TableCell className="text-right">{product.items?.length ?? 0}</TableCell>
+                                    <TableCell className="text-right font-semibold">
+                                        {getPriceRange(product.items)}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex justify-end gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={`Edit ${product.name}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    router.push(`/admin/products/${product.id}`);
+                                                }}
+                                            >
+                                                <Pencil className="text-yellow-500" />
+                                            </Button>
 
-                            <div>
-                                <h3 className="font-semibold text-lg">
-                                    {product.name}
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                    {product.category?.name}
-                                </p>
-                            </div>
-                        </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={`Delete ${product.name}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (!confirm("Delete this product?")) return;
+                                                    deleteMutation.mutate(product.id);
+                                                }}
+                                            >
+                                                <Trash2 className="text-red-500" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </div>
 
-                        {/* ACTIONS */}
-                        <div className="flex gap-2">
-                            <Button
-                                variant="ghost"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    router.push(`/admin/products/${product.id}`);
-                                }}
-                            >
-                                <Pencil className="text-yellow-500" />
-                            </Button>
-
-                            <Button
-                                variant="ghost"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!confirm("Delete this product?")) return;
-                                    deleteMutation.mutate(product.id);
-                                }}
-                            >
-                                <Trash2 className="text-red-500" />
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* SEPARATOR */}
-                    <div className="border-t" />
-
-                    {/* ITEMS */}
-                    <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
-                        {product.items?.length === 0 && (
-                            <p className="text-sm text-muted-foreground">
-                                No items added
-                            </p>
-                        )}
-
-                        {product.items?.map((item) => (
-                            <SelectableItemRow
-                                key={item.id}
-                                item={item}
-                                product={{
-                                    name: product.name,
-                                    imageUrl: product.imageUrl,
-                                }}
-                            />
-                        ))}
-                    </div>
-                </div>
-                );
-            })}
+            <div className="shrink-0 rounded-md border bg-background px-4 py-3 shadow-sm">
+                <PaginationControls pagination={data?.pagination} onPageChange={setPage} />
+            </div>
         </div>
     );
 }

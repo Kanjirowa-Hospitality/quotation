@@ -5,9 +5,52 @@ import { prisma } from "@/lib/prisma";
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const categoryId = searchParams.get("categoryId");
+    const search = searchParams.get("search")?.trim() || "";
+    const pageParam = searchParams.get("page");
+    const pageSizeParam = searchParams.get("pageSize");
+    const where: any = {
+        ...(categoryId ? { categoryId } : {}),
+        ...(search
+            ? {
+                OR: [
+                    { name: { contains: search, mode: "insensitive" } },
+                    { category: { name: { contains: search, mode: "insensitive" } } },
+                    { items: { some: { description: { contains: search, mode: "insensitive" } } } },
+                ],
+            }
+            : {}),
+    };
+
+    if (pageParam) {
+        const page = Math.max(Number(pageParam) || 1, 1);
+        const pageSize = Math.min(Math.max(Number(pageSizeParam) || 20, 1), 100);
+        const [products, total] = await Promise.all([
+            prisma.product.findMany({
+                where,
+                include: {
+                    category: true,
+                    items: true,
+                },
+                orderBy: { name: "asc" },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+            prisma.product.count({ where }),
+        ]);
+
+        return NextResponse.json({
+            data: products,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.max(Math.ceil(total / pageSize), 1),
+            },
+        });
+    }
 
     const products = await prisma.product.findMany({
-        where: categoryId ? { categoryId } : {}, // ✅ FILTER HERE
+        where,
         include: {
             category: true,
             items: true,

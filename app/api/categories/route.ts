@@ -1,8 +1,54 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(req: Request) {
+    const { searchParams } = new URL(req.url)
+    const search = searchParams.get('search')?.trim() || ''
+    const pageParam = searchParams.get('page')
+    const pageSizeParam = searchParams.get('pageSize')
+    const where: any = search
+        ? {
+            OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { slug: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
+            ],
+        }
+        : {}
+
+    if (pageParam) {
+        const page = Math.max(Number(pageParam) || 1, 1)
+        const pageSize = Math.min(Math.max(Number(pageSizeParam) || 20, 1), 100)
+        const [cats, total] = await Promise.all([
+            prisma.category.findMany({
+                include: {
+                    _count: {
+                        select: {
+                            products: true,
+                        },
+                    },
+                },
+                orderBy: { name: 'asc' },
+                where,
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+            prisma.category.count({ where }),
+        ])
+
+        return NextResponse.json({
+            data: cats,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.max(Math.ceil(total / pageSize), 1),
+            },
+        })
+    }
+
     const cats = await prisma.category.findMany({
+        where,
         include: {
             products: {
                 include: {
@@ -48,16 +94,3 @@ export async function POST(req: Request) {
     }
 }
 
-export async function PUT(
-    req: Request,
-    { params }: { params: { id: string } }
-) {
-    const body = await req.json();
-
-    const updated = await prisma.category.update({
-        where: { id: params.id },
-        data: body,
-    });
-
-    return Response.json(updated);
-}
