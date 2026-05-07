@@ -13,7 +13,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-    Table,
     TableBody,
     TableCell,
     TableHead,
@@ -146,15 +145,15 @@ export default function EditQuotationPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div>
+        <div className="flex h-[calc(100vh-3rem)] flex-col gap-4 overflow-hidden">
+            <div className="shrink-0">
                 <h2 className="text-xl font-semibold">Edit quotation</h2>
                 <p className="text-sm text-muted-foreground">
                     These edits are only used for export and will not update product data.
                 </p>
             </div>
 
-            <section className="rounded-lg border bg-background p-4">
+            <section className="shrink-0 rounded-lg border bg-background p-4">
                 <div className="mb-3">
                     <h3 className="font-medium">Export fields</h3>
                     <p className="text-sm text-muted-foreground">
@@ -180,8 +179,9 @@ export default function EditQuotationPage() {
                 </div>
             </section>
 
-            <section className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
+            <section className="flex min-h-0 flex-1 flex-col gap-4">
+                <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
                     <div>
                         <h3 className="font-medium">Quotation items</h3>
                         <p className="text-sm text-muted-foreground">
@@ -295,6 +295,7 @@ export default function EditQuotationPage() {
                             </div>
                         </DialogContent>
                     </Dialog>
+                    </div>
                 </div>
 
                 {quotationItems.length === 0 ? (
@@ -302,9 +303,9 @@ export default function EditQuotationPage() {
                         No items in the quotation cart.
                     </div>
                 ) : (
-                    <div className="rounded-lg border bg-background">
-                        <Table>
-                            <TableHeader>
+                    <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-background">
+                        <table className="w-full caption-bottom text-xs">
+                            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-background [&_th]:shadow-[inset_0_-1px_0_0_var(--border)]">
                                 <TableRow>
                                     <TableHead className="w-16">Image</TableHead>
                                     <TableHead className="min-w-56">Product name</TableHead>
@@ -377,7 +378,7 @@ export default function EditQuotationPage() {
                                     </TableRow>
                                 ))}
                             </TableBody>
-                        </Table>
+                        </table>
                     </div>
                 )}
             </section>

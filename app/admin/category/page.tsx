@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SearchBar } from "@/components/search-bar";
 import {
-    Table,
     TableBody,
     TableCell,
     TableHead,
@@ -122,36 +121,36 @@ export default function AdminCategoriesPage() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-3rem)] flex-col gap-4 overflow-hidden">
+        <div className="flex h-[calc(100vh-10rem)] flex-col gap-4 overflow-hidden">
             <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <h2 className="text-2xl font-semibold">Categories</h2>
-                    <p className="text-sm text-muted-foreground">
-                        {data?.pagination.total ?? 0} categories
-                    </p>
-                </div>
+                    <div>
+                        <h2 className="text-2xl font-semibold">Categories</h2>
+                        <p className="text-sm text-muted-foreground">
+                            {data?.pagination.total ?? 0} categories
+                        </p>
+                    </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <SearchBar
-                        value={search}
-                        onChange={setSearch}
-                        placeholder="Search categories, slugs, descriptions..."
-                    />
-                    {isFetching && !isLoading && (
-                        <span className="text-sm text-muted-foreground">Searching...</span>
-                    )}
-                </div>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <SearchBar
+                            value={search}
+                            onChange={setSearch}
+                            placeholder="Search categories, slugs, descriptions..."
+                        />
+                        {isFetching && !isLoading && (
+                            <span className="text-sm text-muted-foreground">Searching...</span>
+                        )}
+                    </div>
 
-                <Button onClick={() => router.push("/admin/category/new")}>
-                    New Category
-                </Button>
+                    <Button onClick={() => router.push("/admin/category/new")}>
+                        New Category
+                    </Button>
                 </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-                <Table>
-                    <TableHeader className="sticky top-0 z-10 bg-background">
+                <table className="w-full caption-bottom text-xs">
+                    <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-background [&_th]:shadow-[inset_0_-1px_0_0_var(--border)]">
                         <TableRow>
                             {isSelecting && <TableHead className="w-10">Select</TableHead>}
                             <TableHead className="w-16">Image</TableHead>
@@ -250,12 +249,10 @@ export default function AdminCategoriesPage() {
                             );
                         })}
                     </TableBody>
-                </Table>
+                </table>
             </div>
 
-            <div className="shrink-0 rounded-md border bg-background px-4 py-3 shadow-sm">
-                <PaginationControls pagination={data?.pagination} onPageChange={setPage} />
-            </div>
+
         </div>
     );
 }
