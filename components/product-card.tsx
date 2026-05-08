@@ -69,9 +69,9 @@ export function ProductCard({ item }: { item: ProductCardItem }) {
                 />
             </CardHeader>
             <CardContent>
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                     <h3 className="min-w-0 text-lg font-semibold leading-tight">{item.product.name}</h3>
-                    <span className="shrink-0 text-sm italic text-muted-foreground">
+                    <span className="shrink-0 text-sm italic text-muted-foreground sm:text-right">
                         {item.product.category?.name}
                     </span>
                 </div>

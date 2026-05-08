@@ -45,3 +45,6 @@ next-env.d.ts
 
 /images
 /master_data
+
+.next-dev-err.log*
+.next-dev-out.log*

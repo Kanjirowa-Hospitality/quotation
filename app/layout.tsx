@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { Sidebar } from "@/components/sidebar";
-import { TopBar } from "@/components/topbar";
 import QueryProviders from "@/lib/query-client";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -35,14 +33,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <QueryProviders>
-
-          <div className="flex h-screen bg-gray-50">
-            <Sidebar />
-            <div className="flex-1 flex flex-col">
-              <TopBar />
-              <main className="flex-1 overflow-y-auto p-6">{children}</main>
-            </div>
-          </div>
+          {children}
         </QueryProviders>
       </body>
     </html>

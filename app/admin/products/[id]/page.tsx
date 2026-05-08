@@ -196,8 +196,8 @@ export default function EditProductPage() {
     if (loading) return <div className="p-6">Loading...</div>;
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 p-3 backdrop-blur-sm sm:p-4">
+            <div className="max-h-[92dvh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-4 shadow-xl sm:p-6">
                 <h2 className="mb-6 text-xl font-semibold">Edit Product</h2>
 
                 <div className="space-y-5">
@@ -226,7 +226,7 @@ export default function EditProductPage() {
                     </div>
 
                     <div className="space-y-4 pt-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-3">
                             <Label>Variants</Label>
                             <Button size="sm" onClick={addVariant}>
                                 <Plus size={16} />
@@ -281,7 +281,7 @@ export default function EditProductPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-3">
                                         <Label>Sale Options</Label>
                                         <Button size="sm" variant="outline" onClick={() => addSaleOption(variantIndex)}>
                                             <Plus size={16} />
@@ -326,7 +326,7 @@ export default function EditProductPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-3">
                                         <Label>Extra Attributes</Label>
                                         <Button size="sm" variant="outline" onClick={() => addAttribute(variantIndex)}>
                                             <Plus size={16} />
@@ -366,7 +366,7 @@ export default function EditProductPage() {
                         ))}
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4">
+                    <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end">
                         <Button variant="outline" onClick={() => router.back()}>
                             Cancel
                         </Button>

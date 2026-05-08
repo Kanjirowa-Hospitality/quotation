@@ -145,7 +145,7 @@ export default function EditQuotationPage() {
     }
 
     return (
-        <div className="flex h-[calc(100vh-3rem)] flex-col gap-4 overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-4 md:h-[calc(100vh-3rem)] md:overflow-hidden">
             <div className="shrink-0">
                 <h2 className="text-xl font-semibold">Edit quotation</h2>
                 <p className="text-sm text-muted-foreground">
@@ -181,27 +181,27 @@ export default function EditQuotationPage() {
 
             <section className="flex min-h-0 flex-1 flex-col gap-4">
                 <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <h3 className="font-medium">Quotation items</h3>
-                        <p className="text-sm text-muted-foreground">
-                            Edit names, image URLs, descriptions, and prices before exporting.
-                        </p>
-                    </div>
-                    <Dialog open={formatDialogOpen} onOpenChange={setFormatDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button disabled={quotationItems.length === 0 || selected.size === 0}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Generate quotation
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-lg">
-                            <DialogHeader>
-                                <DialogTitle>Generate quotation</DialogTitle>
-                                <DialogDescription>
-                                    Confirm the document details, then choose an export format.
-                                </DialogDescription>
-                            </DialogHeader>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                            <h3 className="font-medium">Quotation items</h3>
+                            <p className="text-sm text-muted-foreground">
+                                Edit names, image URLs, descriptions, and prices before exporting.
+                            </p>
+                        </div>
+                        <Dialog open={formatDialogOpen} onOpenChange={setFormatDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="w-full sm:w-auto" disabled={quotationItems.length === 0 || selected.size === 0}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Generate quotation
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-lg">
+                                <DialogHeader>
+                                    <DialogTitle>Generate quotation</DialogTitle>
+                                    <DialogDescription>
+                                        Confirm the document details, then choose an export format.
+                                    </DialogDescription>
+                                </DialogHeader>
 
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="space-y-1.5">
@@ -293,8 +293,8 @@ export default function EditQuotationPage() {
                                     )
                                 })}
                             </div>
-                        </DialogContent>
-                    </Dialog>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
 
@@ -304,7 +304,7 @@ export default function EditQuotationPage() {
                     </div>
                 ) : (
                     <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-background">
-                        <table className="w-full caption-bottom text-xs">
+                        <table className="min-w-[980px] w-full caption-bottom text-xs">
                             <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-background [&_th]:shadow-[inset_0_-1px_0_0_var(--border)]">
                                 <TableRow>
                                     <TableHead className="w-16">Image</TableHead>

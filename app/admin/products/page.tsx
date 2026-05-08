@@ -92,7 +92,7 @@ export default function AdminProductsPage() {
     });
 
     return (
-        <div className="flex h-[calc(100vh-10rem)] flex-col gap-4 overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-4 md:h-[calc(100vh-10rem)] md:overflow-hidden">
             <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
@@ -113,14 +113,14 @@ export default function AdminProductsPage() {
                         )}
                     </div>
 
-                    <Button onClick={() => router.push("/admin/products/new")}>
+                    <Button className="w-full sm:w-auto" onClick={() => router.push("/admin/products/new")}>
                         New Product
                     </Button>
                 </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-                <table className="w-full caption-bottom text-xs">
+                <table className="min-w-[780px] w-full caption-bottom text-xs">
                     <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-background [&_th]:shadow-[inset_0_-1px_0_0_var(--border)]">
                         <TableRow>
                             {isSelecting && <TableHead className="w-10">Select</TableHead>}

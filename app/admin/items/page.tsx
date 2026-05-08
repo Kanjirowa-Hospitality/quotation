@@ -47,55 +47,57 @@ export default function AdminItemsPage() {
                 </p>
             </div>
 
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Image</TableHead>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Variant</TableHead>
-                        <TableHead>Specs / Sale Basis</TableHead>
-                        <TableHead className="text-right">Price</TableHead>
-                    </TableRow>
-                </TableHeader>
-
-                <TableBody>
-                    {isLoading && (
+            <div className="overflow-x-auto rounded-md border bg-background">
+                <Table className="min-w-[760px]">
+                    <TableHeader>
                         <TableRow>
-                            <TableCell colSpan={6} className="h-24 text-center">
-                                Loading sale options...
-                            </TableCell>
+                            <TableHead>Image</TableHead>
+                            <TableHead>Product</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Variant</TableHead>
+                            <TableHead>Specs / Sale Basis</TableHead>
+                            <TableHead className="text-right">Price</TableHead>
                         </TableRow>
-                    )}
+                    </TableHeader>
 
-                    {!isLoading && data?.length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={6} className="h-24 text-center">
-                                No sale options found.
-                            </TableCell>
-                        </TableRow>
-                    )}
+                    <TableBody>
+                        {isLoading && (
+                            <TableRow>
+                                <TableCell colSpan={6} className="h-24 text-center">
+                                    Loading sale options...
+                                </TableCell>
+                            </TableRow>
+                        )}
 
-                    {data?.map((row) => (
-                        <TableRow key={row.id}>
-                            <TableCell>
-                                <img
-                                    src={row.product.imageUrl || "/placeholder.png"}
-                                    alt={row.product.name}
-                                    className="h-12 w-12 rounded object-cover"
-                                />
-                            </TableCell>
-                            <TableCell className="font-medium">{row.product.name}</TableCell>
-                            <TableCell>{row.product.category?.name || "-"}</TableCell>
-                            <TableCell>{row.description || "-"}</TableCell>
-                            <TableCell className="max-w-md whitespace-normal">
-                                {formatAttributes(row.attributes)}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold">Rs. {row.price}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                        {!isLoading && data?.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={6} className="h-24 text-center">
+                                    No sale options found.
+                                </TableCell>
+                            </TableRow>
+                        )}
+
+                        {data?.map((row) => (
+                            <TableRow key={row.id}>
+                                <TableCell>
+                                    <img
+                                        src={row.product.imageUrl || "/placeholder.png"}
+                                        alt={row.product.name}
+                                        className="h-12 w-12 rounded object-cover"
+                                    />
+                                </TableCell>
+                                <TableCell className="font-medium">{row.product.name}</TableCell>
+                                <TableCell>{row.product.category?.name || "-"}</TableCell>
+                                <TableCell>{row.description || "-"}</TableCell>
+                                <TableCell className="max-w-md whitespace-normal">
+                                    {formatAttributes(row.attributes)}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold">Rs. {row.price}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
     );
 }

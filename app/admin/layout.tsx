@@ -1,3 +1,8 @@
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    return <div className="p-6">{children}</div>
+import { AppShell } from "@/components/app-shell";
+import { requireUser } from "@/lib/auth";
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+    await requireUser();
+
+    return <AppShell>{children}</AppShell>
 }

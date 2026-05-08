@@ -6,7 +6,7 @@ import { SheetTitle } from '@/components/ui/sheet'
 import { useRouter } from 'next/navigation'
 import { Check, FilePenLine, Trash2 } from 'lucide-react'
 
-export function CartSheet() {
+export function CartSheet({ onClose }: { onClose?: () => void }) {
     const items = useCart((s) => s.items)
     const selectedItems = useCart((s) => s.selectedItems)
     const isSelecting = useCart((s) => s.isSelecting)
@@ -23,7 +23,7 @@ export function CartSheet() {
 
     return (
         <div className="flex h-full flex-col">
-            <div className="border-b px-6 py-5">
+            <div className="border-b px-4 py-5 sm:px-6">
                 <div className="pr-10">
                     <SheetTitle className="text-lg font-semibold">Quotation cart</SheetTitle>
                     <p className="text-sm text-muted-foreground">
@@ -56,7 +56,7 @@ export function CartSheet() {
                                         className="h-14 w-14 shrink-0 rounded-md object-cover"
                                     />
                                     <div className="min-w-0 flex-1">
-                                        <div className="flex items-start justify-between gap-3">
+                                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                                             <div className="min-w-0">
                                                 <p className="truncate font-medium">{item.productName}</p>
                                                 {item.description && (
@@ -65,7 +65,7 @@ export function CartSheet() {
                                                     </p>
                                                 )}
                                             </div>
-                                            <p className="shrink-0 font-semibold">Rs. {item.price}</p>
+                                            <p className="shrink-0 font-semibold sm:text-right">Rs. {item.price}</p>
                                         </div>
 
                                         <div className="mt-3 flex items-center justify-between">
@@ -115,7 +115,10 @@ export function CartSheet() {
                     <Button
                         className="w-full"
                         disabled={visibleItems.length === 0}
-                        onClick={() => router.push('/quotation/edit')}
+                        onClick={() => {
+                            onClose?.()
+                            router.push('/quotation/edit')
+                        }}
                     >
                         Edit quotation
                     </Button>

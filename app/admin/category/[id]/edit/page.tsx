@@ -58,7 +58,7 @@ export default function EditCategoryPage() {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
             {/* BACKDROP */}
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -66,7 +66,7 @@ export default function EditCategoryPage() {
             />
 
             {/* CARD */}
-            <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95">
+            <div className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-4 shadow-xl animate-in fade-in zoom-in-95 sm:p-6">
                 <h2 className="text-xl font-semibold mb-6">Edit Category</h2>
 
                 <div className="space-y-4">
@@ -114,7 +114,7 @@ export default function EditCategoryPage() {
                     </div>
 
                     {/* ACTIONS */}
-                    <div className="flex justify-end gap-2 pt-2">
+                    <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                         <Button variant="outline" onClick={() => router.back()}>
                             Cancel
                         </Button>

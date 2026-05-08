@@ -1,11 +1,16 @@
 'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/store/cart'
-import { Check, MousePointer2, ShoppingCart, X } from 'lucide-react'
+import { Check, LogOut, Menu, MousePointer2, ShoppingCart, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { CartSheet } from '@/components/cart-sheet'
+import { Sidebar } from '@/components/sidebar'
 
 export function TopBar() {
+    const router = useRouter()
+    const [cartOpen, setCartOpen] = useState(false)
     const count = useCart((s) => {
         const ids = new Set(s.items.map((item) => item.itemId))
         Object.keys(s.selectedItems).forEach((id) => ids.add(id))
@@ -17,10 +22,28 @@ export function TopBar() {
     const cancelSelection = useCart((s) => s.cancelSelection)
     const confirmSelection = useCart((s) => s.confirmSelection)
 
+    async function signOut() {
+        await fetch('/api/auth/signout', { method: 'POST' })
+        router.replace('/signin')
+        router.refresh()
+    }
+
     return (
-        <header className="h-16 border-b bg-background px-6 flex items-center justify-between">
-            <h1 className="text-lg font-semibold">Dashboard</h1>
-            <div className="flex items-center gap-2">
+        <header className="flex min-h-16 flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-3 sm:px-4 lg:px-6">
+            <div className="flex min-w-0 items-center gap-2">
+                <Sheet>
+                    <SheetTrigger asChild>
+                        <Button variant="outline" size="icon" className="md:hidden" aria-label="Open navigation">
+                            <Menu className="h-5 w-5" />
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-[85vw] max-w-xs p-0" showCloseButton={false}>
+                        <Sidebar className="h-full w-full border-r-0" showCollapse={false} />
+                    </SheetContent>
+                </Sheet>
+                <h1 className="truncate text-base font-semibold sm:text-lg">Dashboard</h1>
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 {isSelecting ? (
                     <>
                         <Button size="sm" onClick={confirmSelection} disabled={selectedCount === 0}>
@@ -29,8 +52,8 @@ export function TopBar() {
                             {selectedCount > 0 ? ` (${selectedCount})` : ''}
                         </Button>
                         <Button size="sm" variant="outline" onClick={cancelSelection}>
-                            <X className="mr-2 h-4 w-4" />
-                            Cancel
+                            <X className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Cancel</span>
                         </Button>
                     </>
                 ) : (
@@ -40,7 +63,7 @@ export function TopBar() {
                     </Button>
                 )}
 
-                <Sheet>
+                <Sheet open={cartOpen} onOpenChange={setCartOpen}>
                     <SheetTrigger asChild>
                         <Button variant="outline" size="icon" className="relative">
                             <ShoppingCart className="h-5 w-5" />
@@ -52,9 +75,13 @@ export function TopBar() {
                         </Button>
                     </SheetTrigger>
                     <SheetContent>
-                        <CartSheet />
+                        <CartSheet onClose={() => setCartOpen(false)} />
                     </SheetContent>
                 </Sheet>
+
+                <Button variant="outline" size="icon" onClick={signOut} aria-label="Sign out" title="Sign out">
+                    <LogOut className="h-5 w-5" />
+                </Button>
             </div>
         </header>
     )

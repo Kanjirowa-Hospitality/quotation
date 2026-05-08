@@ -67,8 +67,8 @@ export default function Page() {
         />
       </div>
 
-      <div className="rounded-md border">
-        <Table>
+      <div className="overflow-x-auto rounded-md border bg-background">
+        <Table className="min-w-[920px]">
           <TableHeader>
             <TableRow>
               {isSelecting && <TableHead className="w-10">Select</TableHead>}

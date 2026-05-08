@@ -42,7 +42,7 @@ export function SelectableItemRow({ item, product }: SelectableItemRowProps) {
         <div
             onClick={handleSelect}
             className={cn(
-                'flex items-start justify-between gap-3 rounded-md bg-muted p-3 transition-colors',
+                'flex flex-col gap-3 rounded-md bg-muted p-3 transition-colors sm:flex-row sm:items-start sm:justify-between',
                 isSelecting && 'cursor-pointer border border-primary/30 bg-primary/5 hover:bg-primary/10',
                 isSelected && 'border-primary bg-primary/10 ring-2 ring-primary/30'
             )}
@@ -79,7 +79,7 @@ export function SelectableItemRow({ item, product }: SelectableItemRowProps) {
                 </div>
             </div>
 
-            <div className="shrink-0 font-semibold">Rs. {item.price}</div>
+            <div className="shrink-0 font-semibold sm:text-right">Rs. {item.price}</div>
         </div>
     )
 }

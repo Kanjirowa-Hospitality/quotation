@@ -1,11 +1,12 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PaginationControls, PaginationMeta } from "@/components/pagination-controls";
+import { SearchBar } from "@/components/search-bar";
 import {
     TableBody,
     TableCell,
@@ -14,6 +15,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { CartItem, useCart } from "@/lib/store/cart";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Check, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 
 type ProductItem = {
@@ -71,7 +73,9 @@ function formatAttributes(attributes: Record<string, unknown> | null) {
 
 export default function CategoryDetailPage() {
     const [page, setPage] = useState(1);
+    const [search, setSearch] = useState("");
     const [expandedProductIds, setExpandedProductIds] = useState<Record<string, boolean>>({});
+    const debouncedSearch = useDebouncedValue(search);
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
@@ -83,10 +87,24 @@ export default function CategoryDetailPage() {
     const toggleSelection = useCart((state) => state.toggleSelection);
     const toggleSelectionGroup = useCart((state) => state.toggleSelectionGroup);
 
-    const { data, isLoading } = useQuery<PaginatedProducts>({
-        queryKey: ["category-products", id, page],
-        queryFn: () =>
-            fetch(`/api/products?categoryId=${id}&page=${page}&pageSize=${PAGE_SIZE}`).then((r) => r.json()),
+    useEffect(() => {
+        setPage(1);
+        setExpandedProductIds({});
+    }, [debouncedSearch]);
+
+    const { data, isLoading, isFetching } = useQuery<PaginatedProducts>({
+        queryKey: ["category-products", id, page, debouncedSearch],
+        queryFn: () => {
+            const params = new URLSearchParams({
+                categoryId: id,
+                page: String(page),
+                pageSize: String(PAGE_SIZE),
+            });
+
+            if (debouncedSearch) params.set("search", debouncedSearch);
+
+            return fetch(`/api/products?${params.toString()}`).then((r) => r.json());
+        },
     });
 
     const cartItemIds = useMemo(
@@ -118,9 +136,9 @@ export default function CategoryDetailPage() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-10rem)] flex-col gap-4 overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-4 md:h-[calc(100vh-10rem)] md:overflow-hidden">
             <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <h2 className="text-2xl font-semibold">
                             {categoryName || "Category"}
@@ -130,14 +148,25 @@ export default function CategoryDetailPage() {
                         </p>
                     </div>
 
-                    <Button onClick={() => router.push("/admin/products/new")}>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <SearchBar
+                            value={search}
+                            onChange={setSearch}
+                            placeholder="Search this category..."
+                        />
+                        {isFetching && !isLoading && (
+                            <span className="text-sm text-muted-foreground">Searching...</span>
+                        )}
+                    </div>
+
+                    <Button className="w-full sm:w-auto" onClick={() => router.push("/admin/products/new")}>
                         New Product
                     </Button>
                 </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-                <table className="w-full caption-bottom text-xs">
+                <table className="min-w-[780px] w-full caption-bottom text-xs">
                     <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-background [&_th]:shadow-[inset_0_-1px_0_0_var(--border)]">
                         <TableRow>
                             <TableHead className="w-10" />
@@ -257,7 +286,7 @@ export default function CategoryDetailPage() {
                                                     {(product.items?.length ?? 0) === 0 ? (
                                                         <p className="text-sm text-muted-foreground">No sale options added.</p>
                                                     ) : (
-                                                        <table className="w-full text-xs">
+                                                        <table className="min-w-[680px] w-full text-xs">
                                                             <thead>
                                                                 <tr className="border-b">
                                                                     {isSelecting && <th className="w-10 py-2 text-left font-medium">Select</th>}
