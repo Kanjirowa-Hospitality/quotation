@@ -29,7 +29,6 @@ type Attribute = {
 
 type SaleOption = {
     unit: string;
-    quantity: string;
     price: string;
 };
 
@@ -47,8 +46,7 @@ type CloudinaryUploadInfo = {
 };
 
 const emptySaleOption = (): SaleOption => ({
-    unit: "unit",
-    quantity: "",
+    unit: "piece",
     price: "",
 });
 
@@ -165,8 +163,7 @@ export default function NewProductPage() {
                         .map((attribute) => [attribute.key, attribute.value])
                 ),
                 saleOptions: variant.saleOptions.map((option) => ({
-                    unit: option.unit || "unit",
-                    quantity: option.quantity,
+                    unit: option.unit || "piece",
                     price: Number(option.price) || 0,
                 })),
             })),
@@ -178,7 +175,7 @@ export default function NewProductPage() {
             body: JSON.stringify(payload),
         });
 
-        router.push("/admin/products");
+        router.back();
         router.refresh();
     };
 
@@ -307,13 +304,6 @@ export default function NewProductPage() {
                                                 value={option.unit}
                                                 onChange={(e) =>
                                                     updateSaleOption(variantIndex, optionIndex, { unit: e.target.value })
-                                                }
-                                            />
-                                            <Input
-                                                placeholder="Quantity"
-                                                value={option.quantity}
-                                                onChange={(e) =>
-                                                    updateSaleOption(variantIndex, optionIndex, { quantity: e.target.value })
                                                 }
                                             />
                                             <Input
