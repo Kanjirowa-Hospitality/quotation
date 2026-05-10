@@ -45,8 +45,8 @@ model ProductVariant {
   color       String?
   attributes  Json?
 
-  productId  String
-  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -56,7 +56,7 @@ model ProductVariant {
 
 model SaleOption {
   id         String  @id @default(cuid())
-  unit       String  @default("unit")
+  unit       String  @default("piece")
   quantity   String?
   price      Float
   attributes Json?
@@ -80,12 +80,12 @@ model User {
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  tokenHash    String   @unique
-  userId       Int
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt    DateTime
-  createdAt    DateTime @default(now())
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([expiresAt])

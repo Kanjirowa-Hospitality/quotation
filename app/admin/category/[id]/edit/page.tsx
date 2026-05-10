@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
 import { CldUploadButton } from "next-cloudinary";
 
 export default function EditCategoryPage() {
@@ -96,7 +97,8 @@ export default function EditCategoryPage() {
                         <Label>Image</Label>
 
                         <CldUploadButton
-                            uploadPreset="kanjirow_upload"
+                            uploadPreset={cloudinaryUploadPreset}
+                            options={cloudinaryUploadOptions}
                             onSuccess={(result: any) => {
                                 setImageUrl(result.info.secure_url);
                             }}

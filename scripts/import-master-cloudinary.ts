@@ -21,7 +21,10 @@ type ImageMap = Record<
 const MASTER_FILE = "master_data/product_master_data.xlsx";
 const CLOUDINARY_MAP_FILE = "master_data/cloudinary-image-map.json";
 const CLOUDINARY_CSV_FILE = "master_data/product_master_data_cloudinary.csv";
-const CLOUDINARY_FOLDER = "quotation/master-data";
+const CLOUDINARY_FOLDER =
+  process.env.CLOUDINARY_UPLOAD_FOLDER ??
+  process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_FOLDER ??
+  "quotation-dev/products";
 const REQUIRED_COLUMNS = ["category", "product", "price"];
 const RESERVED_COLUMNS = new Set([
   "SN",

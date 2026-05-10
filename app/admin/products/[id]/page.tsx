@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { CldUploadButton } from "next-cloudinary";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -16,7 +17,6 @@ type Attribute = {
 type SaleOption = {
     id?: string;
     unit: string;
-    quantity: string;
     price: string;
 };
 
@@ -39,7 +39,6 @@ function attributesToArray(attributes: Record<string, unknown> | null | undefine
 
 const emptySaleOption = (): SaleOption => ({
     unit: "unit",
-    quantity: "",
     price: "",
 });
 
@@ -178,7 +177,6 @@ export default function EditProductPage() {
                 ),
                 saleOptions: variant.saleOptions.map((option) => ({
                     unit: option.unit || "unit",
-                    quantity: option.quantity,
                     price: Number(option.price) || 0,
                 })),
             })),
@@ -209,7 +207,8 @@ export default function EditProductPage() {
                     <div>
                         <Label>Image</Label>
                         <CldUploadButton
-                            uploadPreset="kanjirowa_upload"
+                            uploadPreset={cloudinaryUploadPreset}
+                            options={cloudinaryUploadOptions}
                             onSuccess={(res: any) => setImageUrl(res.info.secure_url)}
                             className="mt-2 w-full rounded-md border px-3 py-2"
                         >
@@ -298,13 +297,7 @@ export default function EditProductPage() {
                                                     updateSaleOption(variantIndex, optionIndex, { unit: e.target.value })
                                                 }
                                             />
-                                            <Input
-                                                placeholder="Quantity"
-                                                value={option.quantity}
-                                                onChange={(e) =>
-                                                    updateSaleOption(variantIndex, optionIndex, { quantity: e.target.value })
-                                                }
-                                            />
+
                                             <Input
                                                 placeholder="Price"
                                                 value={option.price}

@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
 import { CldUploadButton } from "next-cloudinary";
 
 export default function NewItemsPage() {
@@ -115,7 +116,8 @@ export default function NewItemsPage() {
                         <Label>Image</Label>
 
                         <CldUploadButton
-                            uploadPreset="kanjirowa_upload"
+                            uploadPreset={cloudinaryUploadPreset}
+                            options={cloudinaryUploadOptions}
                             onSuccess={(result: any) => {
                                 setImageUrl(result.info.secure_url);
                             }}

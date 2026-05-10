@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
 import { PaginationControls, PaginationMeta } from "@/components/pagination-controls";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCart, CartItem } from "@/lib/store/cart";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, Upload } from "lucide-react";
 
 type ProductItem = {
     id: string;
@@ -62,10 +62,6 @@ export default function AdminProductsPage() {
     const selectedItems = useCart((state) => state.selectedItems);
     const toggleSelectionGroup = useCart((state) => state.toggleSelectionGroup);
 
-    useEffect(() => {
-        setPage(1);
-    }, [debouncedSearch]);
-
     const { data, isLoading, isFetching } = useQuery<PaginatedProducts>({
         queryKey: ["admin-products", page, debouncedSearch],
         queryFn: () => {
@@ -105,7 +101,10 @@ export default function AdminProductsPage() {
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <SearchBar
                             value={search}
-                            onChange={setSearch}
+                            onChange={(value) => {
+                                setSearch(value);
+                                setPage(1);
+                            }}
                             placeholder="Search products, categories, descriptions..."
                         />
                         {isFetching && !isLoading && (
@@ -113,9 +112,19 @@ export default function AdminProductsPage() {
                         )}
                     </div>
 
-                    <Button className="w-full sm:w-auto" onClick={() => router.push("/admin/products/new")}>
-                        New Product
-                    </Button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                            onClick={() => router.push("/admin/products/import")}
+                        >
+                            <Upload size={16} />
+                            Import
+                        </Button>
+                        <Button className="w-full sm:w-auto" onClick={() => router.push("/admin/products/new")}>
+                            New Product
+                        </Button>
+                    </div>
                 </div>
             </div>
 
