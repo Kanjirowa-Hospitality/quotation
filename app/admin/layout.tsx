@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/app-shell";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-    await requireUser();
+    const user = await requireAdmin();
 
-    return <AppShell>{children}</AppShell>
+    return <AppShell user={{ name: user.name, email: user.email, role: user.role }}>{children}</AppShell>
 }

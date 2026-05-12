@@ -6,6 +6,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { promisify } from 'util'
+import { requireApiAdmin } from '@/lib/auth'
 import {
     AlignmentType,
     BorderStyle,
@@ -339,6 +340,9 @@ async function patchTemplateHeaderFooter(buffer: Buffer) {
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
+    const auth = await requireApiAdmin()
+    if (auth.response) return auth.response
+
     const {
         items,
         fields,

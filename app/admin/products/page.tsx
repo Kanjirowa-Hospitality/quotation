@@ -40,6 +40,12 @@ type PaginatedProducts = {
     pagination: PaginationMeta;
 };
 
+type CurrentUserResponse = {
+    user: {
+        role: "ADMIN" | "SUPER_ADMIN";
+    };
+};
+
 const PAGE_SIZE = 20;
 
 function getPriceRange(items: ProductItem[] = []) {
@@ -61,6 +67,11 @@ export default function AdminProductsPage() {
     const isSelecting = useCart((state) => state.isSelecting);
     const selectedItems = useCart((state) => state.selectedItems);
     const toggleSelectionGroup = useCart((state) => state.toggleSelectionGroup);
+    const { data: currentUser } = useQuery<CurrentUserResponse>({
+        queryKey: ["current-user"],
+        queryFn: () => fetch("/api/auth/me").then((r) => r.json()),
+    });
+    const canImport = currentUser?.user.role === "SUPER_ADMIN";
 
     const { data, isLoading, isFetching } = useQuery<PaginatedProducts>({
         queryKey: ["admin-products", page, debouncedSearch],
@@ -113,14 +124,16 @@ export default function AdminProductsPage() {
                     </div>
 
                     <div className="flex flex-col gap-2 sm:flex-row">
-                        <Button
-                            variant="outline"
-                            className="w-full sm:w-auto"
-                            onClick={() => router.push("/admin/products/import")}
-                        >
-                            <Upload size={16} />
-                            Import
-                        </Button>
+                        {canImport && (
+                            <Button
+                                variant="outline"
+                                className="w-full sm:w-auto"
+                                onClick={() => router.push("/admin/products/import")}
+                            >
+                                <Upload size={16} />
+                                Import
+                            </Button>
+                        )}
                         <Button className="w-full sm:w-auto" onClick={() => router.push("/admin/products/new")}>
                             New Product
                         </Button>

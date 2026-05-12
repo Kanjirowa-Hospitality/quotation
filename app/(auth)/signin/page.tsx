@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { LockKeyhole } from "lucide-react";
@@ -71,10 +70,7 @@ export default function SignInPage() {
       </form>
 
       <p className="mt-5 text-center text-sm text-muted-foreground">
-        Need an account?{" "}
-        <Link href="/signup" className="font-medium text-primary hover:underline">
-          Sign up
-        </Link>
+        Need an account? Ask a super admin to create one.
       </p>
     </section>
   );

@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
+import { requireApiAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withFlattenedItems } from "@/lib/product-response";
+import type { Prisma } from "@/app/generated/prisma/client";
+
+type ProductVariantInput = {
+    description?: string | null;
+    weight?: string | null;
+    size?: string | null;
+    color?: string | null;
+    attributes?: Prisma.InputJsonValue;
+    saleOptions?: {
+        price: number;
+        unit?: string | null;
+        quantity?: string | null;
+        attributes?: Prisma.InputJsonValue;
+    }[];
+};
 
 export async function GET(
     req: Request,
@@ -34,11 +50,19 @@ export async function PUT(
     req: Request,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireApiAdmin();
+    if (auth.response) return auth.response;
+
     const { id } = await context.params;
     const body = await req.json();
 
     const { name, categoryId, imageUrl, items, variants } = body;
-    const variantInput = variants ?? (items ?? []).map((item: any) => ({
+    const variantInput: ProductVariantInput[] = variants ?? (items ?? []).map((item: {
+        description?: string | null;
+        attributes?: Prisma.InputJsonValue;
+        price: number;
+        unit?: string | null;
+    }) => ({
         description: item.description,
         attributes: item.attributes || {},
         saleOptions: [{
@@ -58,14 +82,14 @@ export async function PUT(
             categoryId,
             imageUrl,
             variants: {
-                create: variantInput.map((variant: any) => ({
+                create: variantInput.map((variant) => ({
                     description: variant.description,
                     weight: variant.weight || null,
                     size: variant.size || null,
                     color: variant.color || null,
                     attributes: variant.attributes || {},
                     saleOptions: {
-                        create: (variant.saleOptions ?? []).map((option: any) => ({
+                        create: (variant.saleOptions ?? []).map((option) => ({
                             price: option.price,
                             unit: option.unit || "unit",
                             quantity: option.quantity || null,
@@ -92,6 +116,9 @@ export async function DELETE(
     req: Request,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireApiAdmin();
+    if (auth.response) return auth.response;
+
     const { id } = await context.params;
 
     await prisma.product.delete({

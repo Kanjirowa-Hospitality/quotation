@@ -6,6 +6,13 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import { prisma } from "@/lib/prisma";
 
 export const AUTH_COOKIE_NAME = "kanjirowa_session";
+export const USER_ROLES = {
+  ADMIN: "ADMIN",
+  SUPER_ADMIN: "SUPER_ADMIN",
+} as const;
+
+export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
+
 const SESSION_DAYS = 30;
 const PASSWORD_KEY_LENGTH = 64;
 
@@ -116,4 +123,56 @@ export async function requireUser() {
   if (!user) redirect("/signin");
 
   return user;
+}
+
+export async function requireAdmin() {
+  const user = await requireUser();
+
+  if (user.role !== USER_ROLES.ADMIN && user.role !== USER_ROLES.SUPER_ADMIN) {
+    redirect("/signin");
+  }
+
+  return user;
+}
+
+export async function requireSuperAdmin(redirectTo = "/admin/products") {
+  const user = await requireUser();
+
+  if (user.role !== USER_ROLES.SUPER_ADMIN) {
+    redirect(redirectTo);
+  }
+
+  return user;
+}
+
+export async function getApiUser() {
+  return getCurrentUser();
+}
+
+export async function requireApiAdmin() {
+  const user = await getApiUser();
+
+  if (!user) {
+    return { user: null, response: Response.json({ error: "Authentication required." }, { status: 401 }) };
+  }
+
+  if (user.role !== USER_ROLES.ADMIN && user.role !== USER_ROLES.SUPER_ADMIN) {
+    return { user: null, response: Response.json({ error: "Admin access required." }, { status: 403 }) };
+  }
+
+  return { user, response: null };
+}
+
+export async function requireApiSuperAdmin() {
+  const user = await getApiUser();
+
+  if (!user) {
+    return { user: null, response: Response.json({ error: "Authentication required." }, { status: 401 }) };
+  }
+
+  if (user.role !== USER_ROLES.SUPER_ADMIN) {
+    return { user: null, response: Response.json({ error: "Super admin access required." }, { status: 403 }) };
+  }
+
+  return { user, response: null };
 }

@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
+import { requireApiAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withFlattenedItems } from "@/lib/product-response";
+import type { Prisma } from "@/app/generated/prisma/client";
+
+type ProductVariantInput = {
+    description?: string | null;
+    weight?: string | null;
+    size?: string | null;
+    color?: string | null;
+    attributes?: Prisma.InputJsonValue;
+    saleOptions?: {
+        price: number;
+        unit?: string | null;
+        quantity?: string | null;
+        attributes?: Prisma.InputJsonValue;
+    }[];
+};
 
 // ✅ GET ALL PRODUCTS
 export async function GET(req: Request) {
@@ -9,7 +25,7 @@ export async function GET(req: Request) {
     const search = searchParams.get("search")?.trim() || "";
     const pageParam = searchParams.get("page");
     const pageSizeParam = searchParams.get("pageSize");
-    const where: any = {
+    const where: Prisma.ProductWhereInput = {
         ...(categoryId ? { categoryId } : {}),
         ...(search
             ? {
@@ -74,10 +90,18 @@ export async function GET(req: Request) {
 
 // ✅ CREATE PRODUCT + ITEMS
 export async function POST(req: Request) {
+    const auth = await requireApiAdmin();
+    if (auth.response) return auth.response;
+
     const body = await req.json();
 
     const { name, categoryId, imageUrl, items, variants } = body;
-    const variantInput = variants ?? (items ?? []).map((item: any) => ({
+    const variantInput: ProductVariantInput[] = variants ?? (items ?? []).map((item: {
+        description?: string | null;
+        attributes?: Prisma.InputJsonValue;
+        price: number;
+        unit?: string | null;
+    }) => ({
         description: item.description,
         attributes: item.attributes || {},
         saleOptions: [{
@@ -93,14 +117,14 @@ export async function POST(req: Request) {
             imageUrl,
 
             variants: {
-                create: variantInput.map((variant: any) => ({
+                create: variantInput.map((variant) => ({
                     description: variant.description,
                     weight: variant.weight || null,
                     size: variant.size || null,
                     color: variant.color || null,
                     attributes: variant.attributes || {},
                     saleOptions: {
-                        create: (variant.saleOptions ?? []).map((option: any) => ({
+                        create: (variant.saleOptions ?? []).map((option) => ({
                             price: option.price,
                             unit: option.unit || "unit",
                             quantity: option.quantity || null,

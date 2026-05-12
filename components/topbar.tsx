@@ -8,7 +8,13 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { CartSheet } from '@/components/cart-sheet'
 import { Sidebar } from '@/components/sidebar'
 
-export function TopBar() {
+type TopBarUser = {
+    name: string | null
+    email: string
+    role: string
+}
+
+export function TopBar({ user }: { user: TopBarUser }) {
     const router = useRouter()
     const [cartOpen, setCartOpen] = useState(false)
     const count = useCart((s) => {
@@ -38,7 +44,7 @@ export function TopBar() {
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="w-[85vw] max-w-xs p-0" showCloseButton={false}>
-                        <Sidebar className="h-full w-full border-r-0" showCollapse={false} />
+                        <Sidebar className="h-full w-full border-r-0" showCollapse={false} user={user} />
                     </SheetContent>
                 </Sheet>
                 <h1 className="truncate text-base font-semibold sm:text-lg">Dashboard</h1>

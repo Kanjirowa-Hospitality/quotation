@@ -9,6 +9,7 @@
     "start": "next start",
     "import:excel": "bun scripts/import-excel.ts",
     "import:cloudinary": "bun scripts/import-master-cloudinary.ts",
+    "seed:super-admin": "bun scripts/seed-super-admin.ts",
     "lint": "eslint"
   },
   "dependencies": {

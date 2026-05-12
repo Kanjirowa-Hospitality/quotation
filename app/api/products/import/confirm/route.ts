@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
     deleteProductImportRoot,
@@ -15,6 +16,9 @@ type ImportBody = {
 
 export async function POST(req: Request) {
     try {
+        const auth = await requireApiSuperAdmin();
+        if (auth.response) return auth.response;
+
         const body = (await req.json()) as ImportBody;
         const sessionId = body.sessionId?.trim();
 

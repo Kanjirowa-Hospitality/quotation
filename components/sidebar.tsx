@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -13,23 +13,30 @@ import {
     Folder,
     LayoutDashboard,
     Package,
+    Users,
     User,
 } from "lucide-react";
+
+type SidebarUser = {
+    name: string | null;
+    email: string;
+    role: string;
+};
 
 export function Sidebar({
     className,
     showCollapse = true,
+    user,
 }: {
     className?: string;
     showCollapse?: boolean;
+    user: SidebarUser;
 }) {
     const pathname = usePathname();
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(
+        () => typeof window !== "undefined" && localStorage.getItem("kanjirowa-sidebar-collapsed") === "true"
+    );
     const isCollapsed = showCollapse && collapsed;
-
-    useEffect(() => {
-        setCollapsed(localStorage.getItem("kanjirowa-sidebar-collapsed") === "true");
-    }, []);
 
     const toggleCollapsed = () => {
         setCollapsed((current) => {
@@ -126,6 +133,16 @@ export function Sidebar({
                         active={pathname.startsWith("/admin/category")}
                         collapsed={isCollapsed}
                     />
+
+                    {user.role === "SUPER_ADMIN" && (
+                        <SidebarLink
+                            href="/admin/users"
+                            icon={<Users size={18} />}
+                            label="Users"
+                            active={pathname.startsWith("/admin/users")}
+                            collapsed={isCollapsed}
+                        />
+                    )}
                 </div>
 
                 <Separator className="my-4" />
@@ -139,9 +156,9 @@ export function Sidebar({
                     </div>
 
                     <div className={cn("min-w-0 flex-1", isCollapsed && "hidden")}>
-                        <p className="text-sm font-medium">Admin User</p>
+                        <p className="truncate text-sm font-medium">{user.name || "Admin User"}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                            admin@kanjirowa.com
+                            {user.email}
                         </p>
                     </div>
                 </div>

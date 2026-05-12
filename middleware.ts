@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, isSignedAuthCookie } from "@/lib/auth-cookie";
 
-const PUBLIC_PATHS = ["/signin", "/signup"];
+const PUBLIC_PATHS = ["/signin"];
+const PUBLIC_AUTH_API_PATHS = ["/api/auth/signin", "/api/auth/signout"];
 
 function isPublicPath(pathname: string) {
   return (
     PUBLIC_PATHS.includes(pathname) ||
-    pathname.startsWith("/api/auth/") ||
+    PUBLIC_AUTH_API_PATHS.includes(pathname) ||
     pathname.startsWith("/_next/") ||
     pathname === "/favicon.ico" ||
     pathname === "/logo-png.png"

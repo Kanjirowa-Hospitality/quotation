@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server'
+import { requireApiAdmin } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { withFlattenedItems } from '@/lib/product-response'
+import type { Prisma } from '@/app/generated/prisma/client'
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const search = searchParams.get('search')?.trim() || ''
     const pageParam = searchParams.get('page')
     const pageSizeParam = searchParams.get('pageSize')
-    const where: any = search
+    const where: Prisma.CategoryWhereInput = search
         ? {
             OR: [
                 { name: { contains: search, mode: 'insensitive' } },
@@ -71,6 +73,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
+        const auth = await requireApiAdmin();
+        if (auth.response) return auth.response;
+
         const body = await req.json();
 
         const { name, slug, description, imageUrl } = body;

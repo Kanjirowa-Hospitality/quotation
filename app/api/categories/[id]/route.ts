@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -25,6 +26,9 @@ export async function PUT(
     req: Request,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireApiAdmin();
+    if (auth.response) return auth.response;
+
     const { id } = await context.params;
     const body = await req.json();
 
@@ -40,6 +44,9 @@ export async function DELETE(
     req: Request,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireApiAdmin();
+    if (auth.response) return auth.response;
+
     const { id } = await context.params;
 
     await prisma.category.delete({

@@ -144,8 +144,8 @@ export default function Page() {
                   <TableCell className="max-w-sm whitespace-normal">
                     {item.attributes
                       ? Object.entries(item.attributes)
-                          .map(([key, value]) => `${key}: ${String(value)}`)
-                          .join(', ')
+                        .map(([key, value]) => `${key}: ${String(value)}`)
+                        .join(', ')
                       : '-'}
                   </TableCell>
                   <TableCell className="text-right font-semibold">
