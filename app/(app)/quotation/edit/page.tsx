@@ -22,6 +22,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useMemo, useState } from 'react'
 import { Check, Download, FileSpreadsheet, FileText, Trash2 } from 'lucide-react'
+import { parsePriceInput } from '@/lib/validation/product'
 
 const fields = [
     { id: 'name', label: 'Product name' },
@@ -348,12 +349,16 @@ export default function EditQuotationPage() {
                                             <Input
                                                 aria-label="Price"
                                                 type="number"
+                                                inputMode="decimal"
+                                                min={0}
                                                 value={item.price}
-                                                onChange={(e) =>
+                                                onChange={(e) => {
+                                                    const price = parsePriceInput(e.target.value)
+                                                    if (price === null) return
                                                     updateItem(item.itemId, {
-                                                        price: Number(e.target.value) || 0,
+                                                        price,
                                                     })
-                                                }
+                                                }}
                                             />
                                         </TableCell>
                                         <TableCell>

@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, MailCheck, ShieldPlus, UserPlus } from "lucide-react";
+import { Pencil, ShieldPlus, Trash2, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,12 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import {
+    createAdminUserSchema,
+    deleteAdminUserSchema,
+    getValidationError,
+    updateAdminUserSchema,
+} from "@/lib/validation/auth";
 
 type AdminUser = {
     id: number;
@@ -37,9 +43,11 @@ type UsersResponse = {
 export default function AdminUsersPage() {
     const queryClient = useQueryClient();
     const [error, setError] = useState("");
-    const [resetUser, setResetUser] = useState<AdminUser | null>(null);
-    const [resetError, setResetError] = useState("");
-    const [resetMessage, setResetMessage] = useState("");
+    const [editUser, setEditUser] = useState<AdminUser | null>(null);
+    const [editError, setEditError] = useState("");
+    const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
+    const [deleteEmail, setDeleteEmail] = useState("");
+    const [deleteError, setDeleteError] = useState("");
 
     const { data, isLoading } = useQuery<UsersResponse>({
         queryKey: ["admin-users"],
@@ -75,78 +83,131 @@ export default function AdminUsersPage() {
         },
     });
 
-    const sendResetCode = useMutation({
-        mutationFn: async (userId: number) => {
-            const response = await fetch(`/api/admin/users/${userId}/password-reset`, {
-                method: "POST",
-            });
-            const result = await response.json().catch(() => ({ error: "Could not send the reset code." }));
-
-            if (!response.ok) {
-                throw new Error(result.error || "Could not send the reset code.");
-            }
-
-            return result;
-        },
-        onSuccess: () => {
-            setResetError("");
-            setResetMessage("Verification code sent to the user's email.");
-        },
-        onError: (mutationError) => {
-            setResetMessage("");
-            setResetError(mutationError instanceof Error ? mutationError.message : "Could not send the reset code.");
-        },
-    });
-
-    const resetPassword = useMutation({
+    const updateUser = useMutation({
         mutationFn: async ({ userId, formData }: { userId: number; formData: FormData }) => {
-            const response = await fetch(`/api/admin/users/${userId}/password-reset`, {
+            const response = await fetch(`/api/admin/users/${userId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    code: formData.get("code"),
+                    name: formData.get("name"),
+                    email: formData.get("email"),
                     password: formData.get("password"),
                 }),
             });
-            const result = await response.json().catch(() => ({ error: "Could not reset the password." }));
+            const result = await response.json().catch(() => ({ error: "Could not update user." }));
 
             if (!response.ok) {
-                throw new Error(result.error || "Could not reset the password.");
+                throw new Error(result.error || "Could not update user.");
             }
 
             return result;
         },
         onSuccess: () => {
-            setResetError("");
-            setResetMessage("Password updated. The user can sign in with the new password.");
+            setEditError("");
+            setEditUser(null);
             queryClient.invalidateQueries({ queryKey: ["admin-users"] });
         },
         onError: (mutationError) => {
-            setResetMessage("");
-            setResetError(mutationError instanceof Error ? mutationError.message : "Could not reset the password.");
+            setEditError(mutationError instanceof Error ? mutationError.message : "Could not update user.");
+        },
+    });
+
+    const removeUser = useMutation({
+        mutationFn: async ({ userId, email }: { userId: number; email: string }) => {
+            const response = await fetch(`/api/admin/users/${userId}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+            const result = await response.json().catch(() => ({ error: "Could not delete user." }));
+
+            if (!response.ok) {
+                throw new Error(result.error || "Could not delete user.");
+            }
+
+            return result;
+        },
+        onSuccess: () => {
+            setDeleteError("");
+            setDeleteEmail("");
+            setDeleteUser(null);
+            queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+        },
+        onError: (mutationError) => {
+            setDeleteError(mutationError instanceof Error ? mutationError.message : "Could not delete user.");
         },
     });
 
     function onSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
-        createUser.mutate(new FormData(event.currentTarget));
+        const formData = new FormData(event.currentTarget);
+        const validation = createAdminUserSchema.safeParse({
+            name: formData.get("name"),
+            email: formData.get("email"),
+            password: formData.get("password"),
+        });
+
+        if (!validation.success) {
+            setError(getValidationError(validation.error));
+            return;
+        }
+
+        createUser.mutate(formData);
         event.currentTarget.reset();
     }
 
-    function openResetDialog(user: AdminUser) {
-        setResetUser(user);
-        setResetError("");
-        setResetMessage("");
+    function openEditDialog(user: AdminUser) {
+        setEditUser(user);
+        setEditError("");
     }
 
-    function onResetSubmit(event: FormEvent<HTMLFormElement>) {
+    function openDeleteDialog(user: AdminUser) {
+        setDeleteUser(user);
+        setDeleteEmail("");
+        setDeleteError("");
+    }
+
+    function onEditSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        if (!resetUser) return;
+        if (!editUser) return;
 
-        setResetError("");
-        resetPassword.mutate({ userId: resetUser.id, formData: new FormData(event.currentTarget) });
+        setEditError("");
+        const formData = new FormData(event.currentTarget);
+        const validation = updateAdminUserSchema.safeParse({
+            name: formData.get("name"),
+            email: formData.get("email"),
+            password: formData.get("password"),
+        });
+
+        if (!validation.success) {
+            setEditError(getValidationError(validation.error));
+            return;
+        }
+
+        updateUser.mutate({ userId: editUser.id, formData });
+    }
+
+    function onDeleteSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        if (!deleteUser) return;
+
+        setDeleteError("");
+        const validation = deleteAdminUserSchema.safeParse({ email: deleteEmail });
+
+        if (!validation.success) {
+            setDeleteError(getValidationError(validation.error));
+            return;
+        }
+
+        if (validation.data.email !== deleteUser.email) {
+            setDeleteError("Type the user's email exactly to confirm deletion.");
+            return;
+        }
+
+        removeUser.mutate({ userId: deleteUser.id, email: validation.data.email });
     }
 
     return (
@@ -228,10 +289,16 @@ export default function AdminUsersPage() {
                                     </TableCell>
                                     <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="outline" size="sm" onClick={() => openResetDialog(user)}>
-                                            <KeyRound className="size-3" />
-                                            Reset
-                                        </Button>
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="outline" size="sm" onClick={() => openEditDialog(user)}>
+                                                <Pencil className="size-3" />
+                                                Edit
+                                            </Button>
+                                            <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(user)}>
+                                                <Trash2 className="size-3" />
+                                                Delete
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -240,59 +307,101 @@ export default function AdminUsersPage() {
                 </div>
             </section>
 
-            <Dialog open={!!resetUser} onOpenChange={(open) => !open && setResetUser(null)}>
+            <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Reset Password</DialogTitle>
+                        <DialogTitle>Edit User</DialogTitle>
                         <DialogDescription>
-                            Send a verification code, then enter the code and the new password.
+                            Update this admin account directly. Leave password blank to keep the current password.
                         </DialogDescription>
                     </DialogHeader>
 
-                    {resetUser && (
-                        <div className="space-y-4">
-                            <div className="rounded-md border bg-muted/30 p-3">
-                                <p className="font-medium">{resetUser.name || resetUser.email}</p>
-                                <p className="text-muted-foreground">{resetUser.email}</p>
+                    {editUser && (
+                        <form className="space-y-4" onSubmit={onEditSubmit}>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-name">Name</Label>
+                                <Input
+                                    id="edit-name"
+                                    name="name"
+                                    type="text"
+                                    autoComplete="name"
+                                    defaultValue={editUser.name || ""}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-email">Email</Label>
+                                <Input
+                                    id="edit-email"
+                                    name="email"
+                                    type="email"
+                                    autoComplete="email"
+                                    defaultValue={editUser.email}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-password">New password</Label>
+                                <Input
+                                    id="edit-password"
+                                    name="password"
+                                    type="password"
+                                    autoComplete="new-password"
+                                    minLength={8}
+                                    placeholder="Leave blank to keep current password"
+                                />
                             </div>
 
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full"
-                                disabled={sendResetCode.isPending}
-                                onClick={() => sendResetCode.mutate(resetUser.id)}
-                            >
-                                <MailCheck className="size-4" />
-                                {sendResetCode.isPending ? "Sending..." : "Send verification code"}
+                            {editError && <p className="text-sm text-destructive">{editError}</p>}
+
+                            <Button type="submit" className="w-full" disabled={updateUser.isPending}>
+                                <Pencil className="size-4" />
+                                {updateUser.isPending ? "Saving..." : "Save changes"}
                             </Button>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
 
-                            <form className="space-y-3" onSubmit={onResetSubmit}>
-                                <div className="space-y-2">
-                                    <Label htmlFor="reset-code">Verification code</Label>
-                                    <Input id="reset-code" name="code" inputMode="numeric" maxLength={6} required />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="reset-password">New password</Label>
-                                    <Input
-                                        id="reset-password"
-                                        name="password"
-                                        type="password"
-                                        autoComplete="new-password"
-                                        minLength={8}
-                                        required
-                                    />
-                                </div>
+            <Dialog open={!!deleteUser} onOpenChange={(open) => !open && setDeleteUser(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete User</DialogTitle>
+                        <DialogDescription>
+                            This permanently deletes the account and its sessions. Type the user&apos;s email to confirm.
+                        </DialogDescription>
+                    </DialogHeader>
 
-                                {resetError && <p className="text-sm text-destructive">{resetError}</p>}
-                                {resetMessage && <p className="text-sm text-muted-foreground">{resetMessage}</p>}
+                    {deleteUser && (
+                        <form className="space-y-4" onSubmit={onDeleteSubmit}>
+                            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3">
+                                <p className="font-medium text-destructive">{deleteUser.email}</p>
+                                <p className="text-muted-foreground">{deleteUser.name || "No name"}</p>
+                            </div>
 
-                                <Button type="submit" className="w-full" disabled={resetPassword.isPending}>
-                                    <KeyRound className="size-4" />
-                                    {resetPassword.isPending ? "Updating..." : "Set new password"}
-                                </Button>
-                            </form>
-                        </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="delete-email">Confirm email</Label>
+                                <Input
+                                    id="delete-email"
+                                    value={deleteEmail}
+                                    onChange={(event) => setDeleteEmail(event.target.value)}
+                                    autoComplete="off"
+                                    placeholder={deleteUser.email}
+                                    required
+                                />
+                            </div>
+
+                            {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+
+                            <Button
+                                type="submit"
+                                variant="destructive"
+                                className="w-full"
+                                disabled={removeUser.isPending || deleteEmail.trim().toLowerCase() !== deleteUser.email}
+                            >
+                                <Trash2 className="size-4" />
+                                {removeUser.isPending ? "Deleting..." : "Delete user"}
+                            </Button>
+                        </form>
                     )}
                 </DialogContent>
             </Dialog>

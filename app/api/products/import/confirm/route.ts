@@ -8,6 +8,7 @@ import {
     slugifyImportValue,
     uploadImportImagesToCloudinary,
 } from "@/lib/product-import";
+import { importPriceSchema } from "@/lib/validation/product";
 
 type ImportBody = {
     sessionId?: string;
@@ -28,18 +29,22 @@ export async function POST(req: Request) {
 
         const session = await readProductImportSession(sessionId);
         const rows = body.rows?.length ? body.rows : session.rows;
-        const normalizedRows = rows.map((row) => ({
-            ...row,
-            categoryName: row.categoryName.trim(),
-            productName: row.productName.trim(),
-            description: row.description.trim(),
-            color: row.color.trim(),
-            weight: row.weight.trim(),
-            size: row.size.trim(),
-            brand: row.brand.trim(),
-            unit: row.unit.trim() || "unit",
-            price: typeof row.price === "number" && Number.isFinite(row.price) ? row.price : null,
-        }));
+        const normalizedRows = rows.map((row) => {
+            const price = importPriceSchema.safeParse(row.price);
+
+            return {
+                ...row,
+                categoryName: row.categoryName.trim(),
+                productName: row.productName.trim(),
+                description: row.description.trim(),
+                color: row.color.trim(),
+                weight: row.weight.trim(),
+                size: row.size.trim(),
+                brand: row.brand.trim(),
+                unit: row.unit.trim() || "unit",
+                price: price.success ? price.data : null,
+            };
+        });
         const blockingRows = normalizedRows.filter(
             (row) => !row.categoryName || !row.productName || row.price === null
         );

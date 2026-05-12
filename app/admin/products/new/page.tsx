@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getValidationError, isValidPriceInput, productPayloadSchema } from "@/lib/validation/product";
 import {
     Select,
     SelectContent,
@@ -68,6 +69,7 @@ export default function NewProductPage() {
     const [imageUrl, setImageUrl] = useState("");
     const [variants, setVariants] = useState<Variant[]>([emptyVariant()]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
 
     const { data: categories } = useQuery<Category[]>({
         queryKey: ["categories"],
@@ -147,9 +149,10 @@ export default function NewProductPage() {
     };
 
     const onSubmit = async () => {
+        setError("");
         setIsSubmitting(true);
 
-        const payload = {
+        const result = productPayloadSchema.safeParse({
             name,
             categoryId,
             imageUrl,
@@ -165,15 +168,21 @@ export default function NewProductPage() {
                 ),
                 saleOptions: variant.saleOptions.map((option) => ({
                     unit: option.unit || "piece",
-                    price: Number(option.price) || 0,
+                    price: option.price,
                 })),
             })),
-        };
+        });
+
+        if (!result.success) {
+            setError(getValidationError(result.error));
+            setIsSubmitting(false);
+            return;
+        }
 
         await fetch("/api/products", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(result.data),
         });
 
         router.back();
@@ -310,10 +319,14 @@ export default function NewProductPage() {
                                             />
                                             <Input
                                                 placeholder="Price"
+                                                inputMode="decimal"
                                                 value={option.price}
-                                                onChange={(e) =>
-                                                    updateSaleOption(variantIndex, optionIndex, { price: e.target.value })
-                                                }
+                                                onChange={(e) => {
+                                                    const value = e.target.value.trim();
+                                                    if (isValidPriceInput(value)) {
+                                                        updateSaleOption(variantIndex, optionIndex, { price: value });
+                                                    }
+                                                }}
                                             />
                                             <Button
                                                 variant="ghost"
@@ -371,6 +384,7 @@ export default function NewProductPage() {
                     </div>
 
                     <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end">
+                        {error && <p className="text-sm text-destructive sm:mr-auto">{error}</p>}
                         <Button variant="outline" onClick={() => router.back()}>
                             Cancel
                         </Button>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withFlattenedItems } from "@/lib/product-response";
+import { getValidationError, productPayloadSchema } from "@/lib/validation/product";
 import type { Prisma } from "@/app/generated/prisma/client";
 
 type ProductVariantInput = {
@@ -55,9 +56,7 @@ export async function PUT(
 
     const { id } = await context.params;
     const body = await req.json();
-
-    const { name, categoryId, imageUrl, items, variants } = body;
-    const variantInput: ProductVariantInput[] = variants ?? (items ?? []).map((item: {
+    const rawVariants = body.variants ?? (body.items ?? []).map((item: {
         description?: string | null;
         attributes?: Prisma.InputJsonValue;
         price: number;
@@ -70,6 +69,14 @@ export async function PUT(
             unit: item.unit || "unit",
         }],
     }));
+    const result = productPayloadSchema.safeParse({ ...body, variants: rawVariants });
+
+    if (!result.success) {
+        return NextResponse.json({ error: getValidationError(result.error) }, { status: 400 });
+    }
+
+    const { name, categoryId, imageUrl, variants } = result.data;
+    const variantInput: ProductVariantInput[] = variants;
 
     await prisma.productVariant.deleteMany({
         where: { productId: id },

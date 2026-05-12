@@ -3,6 +3,11 @@ import { createHash, randomInt, randomUUID } from "node:crypto";
 import { hashPassword } from "@/lib/auth";
 import { sendPasswordResetCodeEmail } from "@/lib/mail";
 import { prisma } from "@/lib/prisma";
+import {
+  getValidationError,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
+} from "@/lib/validation/auth";
 
 const RESET_CODE_MINUTES = 10;
 
@@ -10,10 +15,6 @@ type ResetCodeRow = {
   id: string;
   userId: number;
 };
-
-function normalizeEmail(email: unknown) {
-  return typeof email === "string" ? email.trim().toLowerCase() : "";
-}
 
 function hashCode(code: string) {
   return createHash("sha256").update(code).digest("hex");
@@ -26,12 +27,13 @@ function generateCode() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const email = normalizeEmail(body.email);
+    const result = passwordResetRequestSchema.safeParse(body);
 
-    if (!email) {
-      return NextResponse.json({ error: "Email is required." }, { status: 400 });
+    if (!result.success) {
+      return NextResponse.json({ error: getValidationError(result.error) }, { status: 400 });
     }
 
+    const { email } = result.data;
     const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true, email: true },
@@ -71,22 +73,13 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
-    const email = normalizeEmail(body.email);
-    const code = typeof body.code === "string" ? body.code.trim() : "";
-    const password = typeof body.password === "string" ? body.password : "";
+    const result = passwordResetConfirmSchema.safeParse(body);
 
-    if (!email) {
-      return NextResponse.json({ error: "Email is required." }, { status: 400 });
+    if (!result.success) {
+      return NextResponse.json({ error: getValidationError(result.error) }, { status: 400 });
     }
 
-    if (!/^\d{6}$/.test(code)) {
-      return NextResponse.json({ error: "Enter the 6 digit verification code." }, { status: 400 });
-    }
-
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
-    }
-
+    const { email, code, password } = result.data;
     const resetCodes = await prisma.$queryRaw<ResetCodeRow[]>`
       SELECT prc."id", prc."userId"
       FROM "PasswordResetCode" prc

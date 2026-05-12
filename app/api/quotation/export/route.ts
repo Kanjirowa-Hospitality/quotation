@@ -7,6 +7,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { promisify } from 'util'
 import { requireApiAdmin } from '@/lib/auth'
+import { getValidationError, quotationExportSchema } from '@/lib/validation/product'
 import {
     AlignmentType,
     BorderStyle,
@@ -343,6 +344,12 @@ export async function POST(req: NextRequest) {
     const auth = await requireApiAdmin()
     if (auth.response) return auth.response
 
+    const result = quotationExportSchema.safeParse(await req.json())
+
+    if (!result.success) {
+        return NextResponse.json({ error: getValidationError(result.error) }, { status: 400 })
+    }
+
     const {
         items,
         fields,
@@ -353,7 +360,7 @@ export async function POST(req: NextRequest) {
         fields: ExportField[]
         format: ExportFormat
         meta?: QuotationMeta
-    } = await req.json()
+    } = result.data
     const quotationDate = meta?.quotationDate?.trim() || '2083/1/21'
     const customerName = meta?.customerName?.trim() || 'Intercontinential Pokhara Resort'
     const customerAddress = meta?.customerAddress?.trim() || 'Begnas Lake, Pachbhaiva- 31, Pokhara'

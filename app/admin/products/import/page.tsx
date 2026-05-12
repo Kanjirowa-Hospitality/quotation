@@ -6,6 +6,7 @@ import { AlertTriangle, Check, FileSpreadsheet, Loader2, Upload } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { parsePriceInput } from "@/lib/validation/product";
 
 type ImportRow = {
     id: string;
@@ -341,10 +342,9 @@ export default function ProductImportPage() {
                                             value={row.price ?? ""}
                                             inputMode="decimal"
                                             onChange={(event) => {
-                                                const value = event.target.value.trim();
-                                                const price = value ? Number(value.replace(/,/g, "")) : null;
+                                                const price = parsePriceInput(event.target.value);
                                                 updateRow(row.id, {
-                                                    price: price !== null && Number.isFinite(price) ? price : null,
+                                                    price,
                                                 });
                                             }}
                                             className="ml-auto h-8 w-full min-w-0 text-right text-xs"

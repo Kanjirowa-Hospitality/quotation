@@ -6,6 +6,12 @@ import { Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  getValidationError,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
+  signInSchema,
+} from "@/lib/validation/auth";
 
 type AuthMode = "signin" | "forgot";
 type ResetStep = "email" | "code";
@@ -28,13 +34,22 @@ export default function SignInPage() {
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
+    const payload = {
+      email: formData.get("email"),
+      password: formData.get("password"),
+    };
+    const validation = signInSchema.safeParse(payload);
+
+    if (!validation.success) {
+      setError(getValidationError(validation.error));
+      setIsSubmitting(false);
+      return;
+    }
+
     const response = await fetch("/api/auth/signin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: formData.get("email"),
-        password: formData.get("password"),
-      }),
+      body: JSON.stringify(validation.data),
     });
 
     const data = await response.json().catch(() => ({ error: "Could not sign in." }));
@@ -57,11 +72,20 @@ export default function SignInPage() {
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email") || "");
+    const validation = passwordResetRequestSchema.safeParse({
+      email: formData.get("email"),
+    });
+
+    if (!validation.success) {
+      setError(getValidationError(validation.error));
+      setIsSubmitting(false);
+      return;
+    }
+
     const response = await fetch("/api/auth/password-reset", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(validation.data),
     });
     const data = await response.json().catch(() => ({ error: "Could not send the verification code." }));
     setIsSubmitting(false);
@@ -71,7 +95,7 @@ export default function SignInPage() {
       return;
     }
 
-    setResetEmail(data.email || email);
+    setResetEmail(data.email || validation.data.email);
     setResetStep("code");
     setMessage("Verification code sent to your email.");
   }
@@ -83,14 +107,22 @@ export default function SignInPage() {
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
+    const validation = passwordResetConfirmSchema.safeParse({
+      email: resetEmail,
+      code: formData.get("code"),
+      password: formData.get("password"),
+    });
+
+    if (!validation.success) {
+      setError(getValidationError(validation.error));
+      setIsSubmitting(false);
+      return;
+    }
+
     const response = await fetch("/api/auth/password-reset", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: resetEmail,
-        code: formData.get("code"),
-        password: formData.get("password"),
-      }),
+      body: JSON.stringify(validation.data),
     });
     const data = await response.json().catch(() => ({ error: "Could not reset the password." }));
     setIsSubmitting(false);

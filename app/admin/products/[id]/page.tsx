@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CldUploadButton } from "next-cloudinary";
+import { CldUploadButton, type CloudinaryUploadWidgetResults } from "next-cloudinary";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getValidationError, isValidPriceInput, productPayloadSchema } from "@/lib/validation/product";
 
 type Attribute = {
     key: string;
@@ -28,6 +29,30 @@ type Variant = {
     color: string;
     attributes: Attribute[];
     saleOptions: SaleOption[];
+};
+
+type ProductResponse = {
+    name?: string | null;
+    categoryId?: string | null;
+    imageUrl?: string | null;
+    variants?: {
+        id?: string;
+        description?: string | null;
+        weight?: string | null;
+        size?: string | null;
+        color?: string | null;
+        attributes?: Record<string, unknown> | null;
+        saleOptions?: {
+            id?: string;
+            unit?: string | null;
+            quantity?: string | null;
+            price?: number | null;
+        }[];
+    }[];
+};
+
+type CloudinaryUploadInfo = {
+    secure_url?: string;
 };
 
 function attributesToArray(attributes: Record<string, unknown> | null | undefined): Attribute[] {
@@ -61,25 +86,26 @@ export default function EditProductPage() {
     const [categoryId, setCategoryId] = useState("");
     const [imageUrl, setImageUrl] = useState("");
     const [variants, setVariants] = useState<Variant[]>([]);
+    const [error, setError] = useState("");
 
     useEffect(() => {
         const fetchData = async () => {
             const res = await fetch(`/api/products/${id}`);
-            const data = await res.json();
+            const data = (await res.json()) as ProductResponse;
 
             setName(data.name ?? "");
             setCategoryId(data.categoryId ?? "");
             setImageUrl(data.imageUrl ?? "");
 
             setVariants(
-                (data.variants ?? []).map((variant: any) => ({
+                (data.variants ?? []).map((variant) => ({
                     id: variant.id,
                     description: variant.description ?? "",
                     weight: variant.weight ?? "",
                     size: variant.size ?? "",
                     color: variant.color ?? "",
                     attributes: attributesToArray(variant.attributes),
-                    saleOptions: (variant.saleOptions ?? []).map((option: any) => ({
+                    saleOptions: (variant.saleOptions ?? []).map((option) => ({
                         id: option.id,
                         unit: option.unit ?? "unit",
                         quantity: option.quantity ?? "",
@@ -161,7 +187,8 @@ export default function EditProductPage() {
     };
 
     const onSubmit = async () => {
-        const payload = {
+        setError("");
+        const result = productPayloadSchema.safeParse({
             name,
             categoryId,
             imageUrl,
@@ -177,15 +204,20 @@ export default function EditProductPage() {
                 ),
                 saleOptions: variant.saleOptions.map((option) => ({
                     unit: option.unit || "unit",
-                    price: Number(option.price) || 0,
+                    price: option.price,
                 })),
             })),
-        };
+        });
+
+        if (!result.success) {
+            setError(getValidationError(result.error));
+            return;
+        }
 
         await fetch(`/api/products/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(result.data),
         });
 
         router.back();
@@ -209,7 +241,10 @@ export default function EditProductPage() {
                         <CldUploadButton
                             uploadPreset={cloudinaryUploadPreset}
                             options={cloudinaryUploadOptions}
-                            onSuccess={(res: any) => setImageUrl(res.info.secure_url)}
+                            onSuccess={(res: CloudinaryUploadWidgetResults) => {
+                                const info = res.info as CloudinaryUploadInfo | undefined;
+                                if (info?.secure_url) setImageUrl(info.secure_url);
+                            }}
                             className="mt-2 w-full rounded-md border px-3 py-2"
                         >
                             Replace Image
@@ -300,10 +335,14 @@ export default function EditProductPage() {
 
                                             <Input
                                                 placeholder="Price"
+                                                inputMode="decimal"
                                                 value={option.price}
-                                                onChange={(e) =>
-                                                    updateSaleOption(variantIndex, optionIndex, { price: e.target.value })
-                                                }
+                                                onChange={(e) => {
+                                                    const value = e.target.value.trim();
+                                                    if (isValidPriceInput(value)) {
+                                                        updateSaleOption(variantIndex, optionIndex, { price: value });
+                                                    }
+                                                }}
                                             />
                                             <Button
                                                 variant="ghost"
@@ -360,6 +399,7 @@ export default function EditProductPage() {
                     </div>
 
                     <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end">
+                        {error && <p className="text-sm text-destructive sm:mr-auto">{error}</p>}
                         <Button variant="outline" onClick={() => router.back()}>
                             Cancel
                         </Button>

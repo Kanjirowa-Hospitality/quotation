@@ -3,6 +3,7 @@ import { createHash, randomInt, randomUUID } from "node:crypto";
 import { hashPassword, requireApiSuperAdmin } from "@/lib/auth";
 import { sendPasswordResetCodeEmail } from "@/lib/mail";
 import { prisma } from "@/lib/prisma";
+import { adminPasswordResetConfirmSchema, getValidationError } from "@/lib/validation/auth";
 
 const RESET_CODE_MINUTES = 10;
 
@@ -84,21 +85,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id: rawId } = await params;
     const userId = getUserId(rawId);
     const body = await req.json();
-    const code = typeof body.code === "string" ? body.code.trim() : "";
-    const password = typeof body.password === "string" ? body.password : "";
+    const result = adminPasswordResetConfirmSchema.safeParse(body);
 
     if (!userId) {
       return NextResponse.json({ error: "Invalid user." }, { status: 400 });
     }
 
-    if (!/^\d{6}$/.test(code)) {
-      return NextResponse.json({ error: "Enter the 6 digit verification code." }, { status: 400 });
+    if (!result.success) {
+      return NextResponse.json({ error: getValidationError(result.error) }, { status: 400 });
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
-    }
-
+    const { code, password } = result.data;
     const resetCodes = await prisma.$queryRaw<ResetCodeRow[]>`
       SELECT "id"
       FROM "PasswordResetCode"
