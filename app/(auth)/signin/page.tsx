@@ -52,10 +52,11 @@ export default function SignInPage() {
       body: JSON.stringify(validation.data),
     });
 
-    const data = await response.json().catch(() => ({ error: "Could not sign in." }));
+    const data = await response.json().catch((err) => ({ error: "Could not sign in.", message: err }));
     setIsSubmitting(false);
 
     if (!response.ok) {
+      console.log(data.message)
       setError(data.error || "Could not sign in.");
       return;
     }
