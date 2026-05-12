@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, isSignedAuthCookie } from "@/lib/auth-cookie";
 
 const PUBLIC_PATHS = ["/signin"];
-const PUBLIC_AUTH_API_PATHS = ["/api/auth/signin", "/api/auth/signout"];
+const PUBLIC_AUTH_API_PATHS = ["/api/auth/signin", "/api/auth/signout", "/api/auth/password-reset"];
 
 function isPublicPath(pathname: string) {
   return (

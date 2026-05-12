@@ -2,9 +2,16 @@
 
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ShieldPlus, UserPlus } from "lucide-react";
+import { KeyRound, MailCheck, ShieldPlus, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -30,6 +37,9 @@ type UsersResponse = {
 export default function AdminUsersPage() {
     const queryClient = useQueryClient();
     const [error, setError] = useState("");
+    const [resetUser, setResetUser] = useState<AdminUser | null>(null);
+    const [resetError, setResetError] = useState("");
+    const [resetMessage, setResetMessage] = useState("");
 
     const { data, isLoading } = useQuery<UsersResponse>({
         queryKey: ["admin-users"],
@@ -65,11 +75,78 @@ export default function AdminUsersPage() {
         },
     });
 
+    const sendResetCode = useMutation({
+        mutationFn: async (userId: number) => {
+            const response = await fetch(`/api/admin/users/${userId}/password-reset`, {
+                method: "POST",
+            });
+            const result = await response.json().catch(() => ({ error: "Could not send the reset code." }));
+
+            if (!response.ok) {
+                throw new Error(result.error || "Could not send the reset code.");
+            }
+
+            return result;
+        },
+        onSuccess: () => {
+            setResetError("");
+            setResetMessage("Verification code sent to the user's email.");
+        },
+        onError: (mutationError) => {
+            setResetMessage("");
+            setResetError(mutationError instanceof Error ? mutationError.message : "Could not send the reset code.");
+        },
+    });
+
+    const resetPassword = useMutation({
+        mutationFn: async ({ userId, formData }: { userId: number; formData: FormData }) => {
+            const response = await fetch(`/api/admin/users/${userId}/password-reset`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    code: formData.get("code"),
+                    password: formData.get("password"),
+                }),
+            });
+            const result = await response.json().catch(() => ({ error: "Could not reset the password." }));
+
+            if (!response.ok) {
+                throw new Error(result.error || "Could not reset the password.");
+            }
+
+            return result;
+        },
+        onSuccess: () => {
+            setResetError("");
+            setResetMessage("Password updated. The user can sign in with the new password.");
+            queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+        },
+        onError: (mutationError) => {
+            setResetMessage("");
+            setResetError(mutationError instanceof Error ? mutationError.message : "Could not reset the password.");
+        },
+    });
+
     function onSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
         createUser.mutate(new FormData(event.currentTarget));
         event.currentTarget.reset();
+    }
+
+    function openResetDialog(user: AdminUser) {
+        setResetUser(user);
+        setResetError("");
+        setResetMessage("");
+    }
+
+    function onResetSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        if (!resetUser) return;
+
+        setResetError("");
+        resetPassword.mutate({ userId: resetUser.id, formData: new FormData(event.currentTarget) });
     }
 
     return (
@@ -129,12 +206,13 @@ export default function AdminUsersPage() {
                                 <TableHead>Email</TableHead>
                                 <TableHead>Role</TableHead>
                                 <TableHead>Created</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading && (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">
+                                    <TableCell colSpan={5} className="h-24 text-center">
                                         Loading users...
                                     </TableCell>
                                 </TableRow>
@@ -149,12 +227,75 @@ export default function AdminUsersPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="outline" size="sm" onClick={() => openResetDialog(user)}>
+                                            <KeyRound className="size-3" />
+                                            Reset
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </table>
                 </div>
             </section>
+
+            <Dialog open={!!resetUser} onOpenChange={(open) => !open && setResetUser(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reset Password</DialogTitle>
+                        <DialogDescription>
+                            Send a verification code, then enter the code and the new password.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {resetUser && (
+                        <div className="space-y-4">
+                            <div className="rounded-md border bg-muted/30 p-3">
+                                <p className="font-medium">{resetUser.name || resetUser.email}</p>
+                                <p className="text-muted-foreground">{resetUser.email}</p>
+                            </div>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                disabled={sendResetCode.isPending}
+                                onClick={() => sendResetCode.mutate(resetUser.id)}
+                            >
+                                <MailCheck className="size-4" />
+                                {sendResetCode.isPending ? "Sending..." : "Send verification code"}
+                            </Button>
+
+                            <form className="space-y-3" onSubmit={onResetSubmit}>
+                                <div className="space-y-2">
+                                    <Label htmlFor="reset-code">Verification code</Label>
+                                    <Input id="reset-code" name="code" inputMode="numeric" maxLength={6} required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="reset-password">New password</Label>
+                                    <Input
+                                        id="reset-password"
+                                        name="password"
+                                        type="password"
+                                        autoComplete="new-password"
+                                        minLength={8}
+                                        required
+                                    />
+                                </div>
+
+                                {resetError && <p className="text-sm text-destructive">{resetError}</p>}
+                                {resetMessage && <p className="text-sm text-muted-foreground">{resetMessage}</p>}
+
+                                <Button type="submit" className="w-full" disabled={resetPassword.isPending}>
+                                    <KeyRound className="size-4" />
+                                    {resetPassword.isPending ? "Updating..." : "Set new password"}
+                                </Button>
+                            </form>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -7,21 +7,30 @@ function normalizeEmail(email: unknown) {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const email = normalizeEmail(body.email);
-  const password = typeof body.password === "string" ? body.password : "";
+  try {
+    const body = await req.json();
+    const email = normalizeEmail(body.email);
+    const password = typeof body.password === "string" ? body.password : "";
 
-  if (!email || !password) {
-    return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
+    if (!email || !password) {
+      return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found. Ask an admin to create your account." }, { status: 404 });
+    }
+
+    if (!verifyPassword(password, user.passwordHash)) {
+      return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
+    }
+
+    await createSession(user.id);
+
+    return NextResponse.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  } catch (error) {
+    console.error("Sign in failed:", error);
+    return NextResponse.json({ error: "Could not sign in. Please try again." }, { status: 500 });
   }
-
-  const user = await prisma.user.findUnique({ where: { email } });
-
-  if (!user || !verifyPassword(password, user.passwordHash)) {
-    return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
-  }
-
-  await createSession(user.id);
-
-  return NextResponse.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
 }

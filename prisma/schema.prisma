@@ -83,6 +83,7 @@ model User {
   updatedAt    DateTime @default(now())
 
   sessions Session[]
+  passwordResetCodes PasswordResetCode[]
 }
 
 model Session {
@@ -92,6 +93,19 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetCode {
+  id        String    @id @default(cuid())
+  codeHash  String
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
   @@index([expiresAt])
