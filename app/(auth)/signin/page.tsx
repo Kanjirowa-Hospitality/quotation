@@ -56,7 +56,9 @@ export default function SignInPage() {
     setIsSubmitting(false);
 
     if (!response.ok) {
+
       console.log(data.message)
+
       setError(data.error || "Could not sign in.");
       return;
     }
