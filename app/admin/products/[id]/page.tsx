@@ -344,6 +344,8 @@ export default function EditProductPage() {
                                                     }
                                                 }}
                                             />
+
+
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
