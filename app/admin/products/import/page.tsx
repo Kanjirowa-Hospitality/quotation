@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, FileSpreadsheet, Loader2, Upload } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, LoadingButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { parsePriceInput } from "@/lib/validation/product";
@@ -168,23 +168,27 @@ export default function ProductImportPage() {
                                 if (file) uploadFile(file);
                             }}
                         />
-                        <Button
+                        <LoadingButton
                             variant="outline"
                             className="w-full sm:w-auto"
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={isUploading || isImporting}
+                            loading={isUploading}
+                            loadingText="Reading..."
+                            disabled={isImporting}
                         >
-                            {isUploading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
-                            {isUploading ? "Reading..." : "Upload Excel"}
-                        </Button>
-                        <Button
+                            <Upload size={16} />
+                            Upload Excel
+                        </LoadingButton>
+                        <LoadingButton
                             className="w-full sm:w-auto"
                             onClick={confirmImport}
-                            disabled={!session || blockingRows.length > 0 || isImporting || Boolean(result)}
+                            loading={isImporting}
+                            loadingText="Importing..."
+                            disabled={!session || blockingRows.length > 0 || Boolean(result)}
                         >
-                            {isImporting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
-                            {isImporting ? "Importing..." : "Confirm Import"}
-                        </Button>
+                            <Check size={16} />
+                            Confirm Import
+                        </LoadingButton>
                         <Button variant="ghost" className="w-full sm:w-auto" onClick={() => router.back()}>
                             Cancel
                         </Button>

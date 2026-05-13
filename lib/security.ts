@@ -17,6 +17,8 @@ type RateLimitOptions = {
 
 type RateLimitResult = {
   allowed: boolean;
+  count: number;
+  remaining: number;
   retryAfter: number;
 };
 
@@ -54,15 +56,20 @@ export function checkRateLimit({ key, limit, windowMs }: RateLimitOptions): Rate
 
   if (!current || current.resetAt <= now) {
     rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, retryAfter: 0 };
+    return { allowed: true, count: 1, remaining: limit - 1, retryAfter: 0 };
   }
 
   if (current.count >= limit) {
-    return { allowed: false, retryAfter: Math.max(Math.ceil((current.resetAt - now) / 1000), 1) };
+    return {
+      allowed: false,
+      count: current.count,
+      remaining: 0,
+      retryAfter: Math.max(Math.ceil((current.resetAt - now) / 1000), 1),
+    };
   }
 
   current.count += 1;
-  return { allowed: true, retryAfter: 0 };
+  return { allowed: true, count: current.count, remaining: Math.max(limit - current.count, 0), retryAfter: 0 };
 }
 
 export function rateLimitResponse(retryAfter: number) {

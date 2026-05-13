@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
+import { LoaderCircle } from "lucide-react"
 import { Slot } from "radix-ui"
 
 import { cn } from "@/lib/utils"
@@ -39,16 +40,18 @@ const buttonVariants = cva(
   }
 )
 
+type ButtonProps = React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  }
+
 function Button({
   className,
   variant = "default",
   size = "default",
   asChild = false,
   ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
+}: ButtonProps) {
   const Comp = asChild ? Slot.Root : "button"
 
   return (
@@ -62,4 +65,25 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+type LoadingButtonProps = ButtonProps & {
+  loading?: boolean
+  loadingText?: React.ReactNode
+}
+
+function LoadingButton({
+  children,
+  disabled,
+  loading = false,
+  loadingText,
+  ...props
+}: LoadingButtonProps) {
+  return (
+    <Button aria-busy={loading} disabled={disabled || loading} {...props}>
+      {loading && <LoaderCircle className="animate-spin" aria-hidden="true" />}
+      {loading && loadingText ? loadingText : children}
+    </Button>
+  )
+}
+
+export { Button, LoadingButton, buttonVariants }
+export type { ButtonProps, LoadingButtonProps }

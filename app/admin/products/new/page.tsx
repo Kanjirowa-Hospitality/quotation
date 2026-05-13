@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { CloudinaryUploadWidgetResults } from "next-cloudinary";
 import { CldUploadButton } from "next-cloudinary";
 import { Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, LoadingButton } from "@/components/ui/button";
 import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -388,9 +388,14 @@ export default function NewProductPage() {
                         <Button variant="outline" onClick={() => router.back()}>
                             Cancel
                         </Button>
-                        <Button onClick={onSubmit} disabled={isSubmitting || !name || !categoryId}>
-                            {isSubmitting ? "Saving..." : "Save Product"}
-                        </Button>
+                        <LoadingButton
+                            onClick={onSubmit}
+                            loading={isSubmitting}
+                            loadingText="Saving..."
+                            disabled={!name || !categoryId}
+                        >
+                            Save Product
+                        </LoadingButton>
                     </div>
                 </div>
             </div>
