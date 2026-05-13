@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx prisma db push && npx prisma generate && next build",
     "start": "next start",
-    "import:excel": "bun scripts/import-excel.ts",
-    "import:cloudinary": "bun scripts/import-master-cloudinary.ts",
-    "seed:super-admin": "bun scripts/seed-super-admin.ts",
+    "import:excel": "npm run import:excel",
+    "import:cloudinary": "npm run import:cloudinary",
+    "seed:super-admin": "npm run seed:super-admin",
     "lint": "eslint"
   },
   "dependencies": {
