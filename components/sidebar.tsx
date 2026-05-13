@@ -61,7 +61,7 @@ export function Sidebar({
                     isCollapsed && "justify-center px-2"
                 )}
             >
-                <img src="/logo-png.png" alt="Kanjirow" className="h-10 shrink-0" />
+                <img src="/main-logo.png" alt="Kanjirow" className="h-10 shrink-0" />
                 <span
                     className={cn(
                         "min-w-0 flex-1 truncate font-semibold text-lg tracking-wide transition-opacity",

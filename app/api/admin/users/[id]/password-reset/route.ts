@@ -71,8 +71,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     });
 
     return NextResponse.json({ ok: true, expiresAt });
-  } catch (error) {
-    console.error("Password reset code failed:", error);
+  } catch {
     return NextResponse.json({ error: "Could not send the password reset code." }, { status: 500 });
   }
 }
@@ -126,8 +125,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     ]);
 
     return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error("Password reset failed:", error);
+  } catch {
     return NextResponse.json({ error: "Could not reset the password." }, { status: 500 });
   }
 }

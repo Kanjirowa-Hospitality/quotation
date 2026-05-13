@@ -80,7 +80,6 @@ export async function POST(req: Request) {
 
         const { name, slug, description, imageUrl } = body;
 
-        console.log(name, slug, description, imageUrl)
         // basic validation
         if (!name || !slug) {
             return NextResponse.json(
@@ -99,9 +98,9 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json(category, { status: 201 });
-    } catch (err) {
+    } catch {
         return NextResponse.json(
-            { error: "Something went wrong", details: err },
+            { error: "Something went wrong" },
             { status: 500 }
         );
     }

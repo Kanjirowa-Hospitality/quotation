@@ -9,7 +9,7 @@ type AppShellUser = {
 
 export function AppShell({ children, user }: { children: React.ReactNode; user: AppShellUser }) {
   return (
-    <div className="flex h-dvh overflow-hidden bg-gray-50">
+    <div className="flex h-dvh overflow-hidden bg-background">
       <Sidebar className="hidden md:flex" user={user} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar user={user} />

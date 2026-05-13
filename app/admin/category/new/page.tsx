@@ -1,13 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
-import { CldUploadButton } from "next-cloudinary";
+import { CldUploadButton, type CloudinaryUploadWidgetResults } from "next-cloudinary";
+
+type CloudinaryUploadInfo = {
+    secure_url?: string;
+};
+
+function getCategorySlug(value: string) {
+    return value
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+}
 
 export default function NewCategoryPage() {
     const router = useRouter();
@@ -17,19 +29,13 @@ export default function NewCategoryPage() {
     const [description, setDescription] = useState("");
     const [imageUrl, setImageUrl] = useState("");
 
-    // Auto slug
-    useEffect(() => {
-        const generatedSlug = name
-            .toLowerCase()
-            .trim()
-            .replace(/\s+/g, "-")
-            .replace(/[^a-z0-9-]/g, "");
-
-        setSlug(generatedSlug);
-    }, [name]);
+    const onNameChange = (value: string) => {
+        setName(value);
+        setSlug(getCategorySlug(value));
+    };
 
     const onSubmit = async () => {
-        const resp = await fetch("/api/categories", {
+        await fetch("/api/categories", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -39,8 +45,6 @@ export default function NewCategoryPage() {
                 imageUrl,
             }),
         });
-
-        console.log(resp)
 
         router.push("/admin/category");
     };
@@ -63,7 +67,7 @@ export default function NewCategoryPage() {
                         <Label>Name</Label>
                         <Input
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(e) => onNameChange(e.target.value)}
                             placeholder="Category name"
                         />
                     </div>
@@ -95,8 +99,9 @@ export default function NewCategoryPage() {
                         <CldUploadButton
                             uploadPreset={cloudinaryUploadPreset}
                             options={cloudinaryUploadOptions}
-                            onSuccess={(result: any) => {
-                                setImageUrl(result.info.secure_url);
+                            onSuccess={(result: CloudinaryUploadWidgetResults) => {
+                                const info = result.info as CloudinaryUploadInfo | undefined;
+                                if (info?.secure_url) setImageUrl(info.secure_url);
                             }}
                             className="mt-2 px-3 py-2 border rounded-md w-full text-sm"
                         >
@@ -106,6 +111,7 @@ export default function NewCategoryPage() {
                         {imageUrl && (
                             <img
                                 src={imageUrl}
+                                alt={name ? `${name} category` : "Category"}
                                 className="h-28 w-full object-cover rounded-md mt-3 border"
                             />
                         )}

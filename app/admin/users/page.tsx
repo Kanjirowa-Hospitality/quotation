@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, ShieldPlus, Trash2, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, LoadingButton } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
@@ -246,10 +246,15 @@ export default function AdminUsersPage() {
 
                     {error && <p className="text-sm text-destructive">{error}</p>}
 
-                    <Button type="submit" className="w-full" disabled={createUser.isPending}>
+                    <LoadingButton
+                        type="submit"
+                        className="w-full"
+                        loading={createUser.isPending}
+                        loadingText="Creating..."
+                    >
                         <ShieldPlus className="size-4" />
-                        {createUser.isPending ? "Creating..." : "Create Admin"}
-                    </Button>
+                        Create Admin
+                    </LoadingButton>
                 </form>
             </section>
 
@@ -353,10 +358,15 @@ export default function AdminUsersPage() {
 
                             {editError && <p className="text-sm text-destructive">{editError}</p>}
 
-                            <Button type="submit" className="w-full" disabled={updateUser.isPending}>
+                            <LoadingButton
+                                type="submit"
+                                className="w-full"
+                                loading={updateUser.isPending}
+                                loadingText="Saving..."
+                            >
                                 <Pencil className="size-4" />
-                                {updateUser.isPending ? "Saving..." : "Save changes"}
-                            </Button>
+                                Save changes
+                            </LoadingButton>
                         </form>
                     )}
                 </DialogContent>
@@ -392,15 +402,17 @@ export default function AdminUsersPage() {
 
                             {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
 
-                            <Button
+                            <LoadingButton
                                 type="submit"
                                 variant="destructive"
                                 className="w-full"
+                                loading={removeUser.isPending}
+                                loadingText="Deleting..."
                                 disabled={removeUser.isPending || deleteEmail.trim().toLowerCase() !== deleteUser.email}
                             >
                                 <Trash2 className="size-4" />
-                                {removeUser.isPending ? "Deleting..." : "Delete user"}
-                            </Button>
+                                Delete user
+                            </LoadingButton>
                         </form>
                     )}
                 </DialogContent>
