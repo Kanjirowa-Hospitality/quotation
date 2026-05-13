@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
-import { CldUploadButton } from "next-cloudinary";
+import { CldUploadButton, type CloudinaryUploadWidgetResults } from "next-cloudinary";
+
+type CloudinaryUploadInfo = {
+    secure_url?: string;
+};
 
 export default function EditCategoryPage() {
     const router = useRouter();
@@ -25,7 +29,6 @@ export default function EditCategoryPage() {
     useEffect(() => {
         const fetchCategory = async () => {
             const res = await fetch(`/api/categories/${id}`);
-            console.log(res)
             const data = await res.json();
 
             setName(data.name);
@@ -99,8 +102,9 @@ export default function EditCategoryPage() {
                         <CldUploadButton
                             uploadPreset={cloudinaryUploadPreset}
                             options={cloudinaryUploadOptions}
-                            onSuccess={(result: any) => {
-                                setImageUrl(result.info.secure_url);
+                            onSuccess={(result: CloudinaryUploadWidgetResults) => {
+                                const info = result.info as CloudinaryUploadInfo | undefined;
+                                if (info?.secure_url) setImageUrl(info.secure_url);
                             }}
                             className="mt-2 px-3 py-2 border rounded-md w-full text-sm"
                         >
@@ -110,6 +114,7 @@ export default function EditCategoryPage() {
                         {imageUrl && (
                             <img
                                 src={imageUrl}
+                                alt={name ? `${name} category` : "Category"}
                                 className="h-28 w-full object-cover rounded-md mt-3 border"
                             />
                         )}
