@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, LoadingButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +28,7 @@ export default function NewCategoryPage() {
     const [slug, setSlug] = useState("");
     const [description, setDescription] = useState("");
     const [imageUrl, setImageUrl] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const onNameChange = (value: string) => {
         setName(value);
@@ -35,7 +36,9 @@ export default function NewCategoryPage() {
     };
 
     const onSubmit = async () => {
-        await fetch("/api/categories", {
+        setIsSubmitting(true);
+
+        const res = await fetch("/api/categories", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -45,6 +48,11 @@ export default function NewCategoryPage() {
                 imageUrl,
             }),
         });
+
+        if (!res.ok) {
+            setIsSubmitting(false);
+            return;
+        }
 
         router.push("/admin/category");
     };
@@ -122,7 +130,14 @@ export default function NewCategoryPage() {
                         <Button variant="outline" onClick={() => router.back()}>
                             Cancel
                         </Button>
-                        <Button onClick={onSubmit}>Save Category</Button>
+                        <LoadingButton
+                            onClick={onSubmit}
+                            loading={isSubmitting}
+                            loadingText="Saving..."
+                            disabled={!name || !slug}
+                        >
+                            Save Category
+                        </LoadingButton>
                     </div>
                 </div>
             </div>

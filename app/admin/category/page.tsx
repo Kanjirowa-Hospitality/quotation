@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,7 @@ import { PaginationControls, PaginationMeta } from "@/components/pagination-cont
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { CartItem, useCart } from "@/lib/store/cart";
 import { useRouter } from "next/navigation";
-import { Trash2, Pencil } from "lucide-react";
+import { LoaderCircle, Trash2, Pencil } from "lucide-react";
 
 type CategoryItem = {
     id: string;
@@ -51,15 +51,12 @@ export default function AdminCategoriesPage() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState("");
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<Record<string, boolean>>({});
+    const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
     const debouncedSearch = useDebouncedValue(search);
     const router = useRouter();
     const queryClient = useQueryClient();
     const isSelecting = useCart((state) => state.isSelecting);
     const toggleSelectionGroup = useCart((state) => state.toggleSelectionGroup);
-
-    useEffect(() => {
-        setPage(1);
-    }, [debouncedSearch]);
 
     const { data, isLoading, isFetching } = useQuery<PaginatedCategories>({
         queryKey: ["categories", page, debouncedSearch],
@@ -86,12 +83,16 @@ export default function AdminCategoriesPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["categories"] });
         },
+        onSettled: () => {
+            setDeletingCategoryId(null);
+        },
     });
 
     const handleDelete = (id: string) => {
         const confirmDelete = confirm("Are you sure you want to delete this category?");
         if (!confirmDelete) return;
 
+        setDeletingCategoryId(id);
         deleteMutation.mutate(id);
     };
 
@@ -134,7 +135,10 @@ export default function AdminCategoriesPage() {
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <SearchBar
                             value={search}
-                            onChange={setSearch}
+                            onChange={(value) => {
+                                setSearch(value);
+                                setPage(1);
+                            }}
                             placeholder="Search categories, slugs, descriptions..."
                         />
                         {isFetching && !isLoading && (
@@ -178,6 +182,7 @@ export default function AdminCategoriesPage() {
                         )}
 
                         {data?.data.map((cat) => {
+                            const isDeleting = deletingCategoryId === cat.id && deleteMutation.isPending;
                             const productCount = cat._count?.products ?? cat.products?.length ?? 0;
                             const hasItems = productCount > 0;
                             const isCategorySelected = Boolean(selectedCategoryIds[cat.id]);
@@ -238,12 +243,18 @@ export default function AdminCategoriesPage() {
                                                 size="icon"
                                                 className="cursor-pointer"
                                                 aria-label={`Delete ${cat.name}`}
+                                                aria-busy={isDeleting}
+                                                disabled={isDeleting}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleDelete(cat.id);
                                                 }}
                                             >
-                                                <Trash2 className="cursor-pointer text-red-500" />
+                                                {isDeleting ? (
+                                                    <LoaderCircle className="animate-spin text-red-500" />
+                                                ) : (
+                                                    <Trash2 className="cursor-pointer text-red-500" />
+                                                )}
                                             </Button>
                                         </div>
                                     </TableCell>

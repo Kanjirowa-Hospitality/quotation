@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, LoadingButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
 import { CldUploadButton, type CloudinaryUploadWidgetResults } from "next-cloudinary";
+import { LoaderCircle } from "lucide-react";
 
 type CloudinaryUploadInfo = {
     secure_url?: string;
@@ -24,6 +25,7 @@ export default function EditCategoryPage() {
     const [slug, setSlug] = useState("");
     const [description, setDescription] = useState("");
     const [imageUrl, setImageUrl] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // FETCH CATEGORY
     useEffect(() => {
@@ -43,7 +45,9 @@ export default function EditCategoryPage() {
     }, [id]);
 
     const onUpdate = async () => {
-        await fetch(`/api/categories/${id}`, {
+        setIsSubmitting(true);
+
+        const res = await fetch(`/api/categories/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -54,11 +58,21 @@ export default function EditCategoryPage() {
             }),
         });
 
+        if (!res.ok) {
+            setIsSubmitting(false);
+            return;
+        }
+
         router.push("/admin/category");
     };
 
     if (loading) {
-        return <div className="p-6">Loading...</div>;
+        return (
+            <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Loading category...
+            </div>
+        );
     }
 
     return (
@@ -125,7 +139,14 @@ export default function EditCategoryPage() {
                         <Button variant="outline" onClick={() => router.back()}>
                             Cancel
                         </Button>
-                        <Button onClick={onUpdate}>Update</Button>
+                        <LoadingButton
+                            onClick={onUpdate}
+                            loading={isSubmitting}
+                            loadingText="Updating..."
+                            disabled={!name || !slug}
+                        >
+                            Update
+                        </LoadingButton>
                     </div>
                 </div>
             </div>
