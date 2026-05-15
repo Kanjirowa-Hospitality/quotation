@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CldUploadButton, type CloudinaryUploadWidgetResults } from "next-cloudinary";
-import { Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { Button, LoadingButton } from "@/components/ui/button";
 import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,6 +86,7 @@ export default function EditProductPage() {
     const [categoryId, setCategoryId] = useState("");
     const [imageUrl, setImageUrl] = useState("");
     const [variants, setVariants] = useState<Variant[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
 
     useEffect(() => {
@@ -188,6 +189,7 @@ export default function EditProductPage() {
 
     const onSubmit = async () => {
         setError("");
+        setIsSubmitting(true);
         const result = productPayloadSchema.safeParse({
             name,
             categoryId,
@@ -211,19 +213,33 @@ export default function EditProductPage() {
 
         if (!result.success) {
             setError(getValidationError(result.error));
+            setIsSubmitting(false);
             return;
         }
 
-        await fetch(`/api/products/${id}`, {
+        const res = await fetch(`/api/products/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(result.data),
         });
 
+        if (!res.ok) {
+            setError("Could not update product.");
+            setIsSubmitting(false);
+            return;
+        }
+
         router.back();
     };
 
-    if (loading) return <div className="p-6">Loading...</div>;
+    if (loading) {
+        return (
+            <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Loading product...
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black/40 p-3 backdrop-blur-sm sm:p-4">
@@ -405,7 +421,14 @@ export default function EditProductPage() {
                         <Button variant="outline" onClick={() => router.back()}>
                             Cancel
                         </Button>
-                        <Button onClick={onSubmit}>Update Product</Button>
+                        <LoadingButton
+                            onClick={onSubmit}
+                            loading={isSubmitting}
+                            loadingText="Updating..."
+                            disabled={!name || !categoryId}
+                        >
+                            Update Product
+                        </LoadingButton>
                     </div>
                 </div>
             </div>

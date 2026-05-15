@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { CartItem, useCart } from "@/lib/store/cart";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { Check, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
 
 type ProductItem = {
     id: string;
@@ -75,6 +75,7 @@ export default function CategoryDetailPage() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState("");
     const [expandedProductIds, setExpandedProductIds] = useState<Record<string, boolean>>({});
+    const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
     const debouncedSearch = useDebouncedValue(search);
     const params = useParams();
     const router = useRouter();
@@ -86,11 +87,6 @@ export default function CategoryDetailPage() {
     const selectedItems = useCart((state) => state.selectedItems);
     const toggleSelection = useCart((state) => state.toggleSelection);
     const toggleSelectionGroup = useCart((state) => state.toggleSelectionGroup);
-
-    useEffect(() => {
-        setPage(1);
-        setExpandedProductIds({});
-    }, [debouncedSearch]);
 
     const { data, isLoading, isFetching } = useQuery<PaginatedProducts>({
         queryKey: ["category-products", id, page, debouncedSearch],
@@ -118,13 +114,18 @@ export default function CategoryDetailPage() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            await fetch(`/api/products/${id}`, {
+            const res = await fetch(`/api/products/${id}`, {
                 method: "DELETE",
             });
+
+            if (!res.ok) throw new Error("Failed to delete product");
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["admin-products"] });
             queryClient.invalidateQueries({ queryKey: ["category-products", id] });
+        },
+        onSettled: () => {
+            setDeletingProductId(null);
         },
     });
 
@@ -151,7 +152,11 @@ export default function CategoryDetailPage() {
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <SearchBar
                             value={search}
-                            onChange={setSearch}
+                            onChange={(value) => {
+                                setSearch(value);
+                                setPage(1);
+                                setExpandedProductIds({});
+                            }}
                             placeholder="Search this category..."
                         />
                         {isFetching && !isLoading && (
@@ -196,6 +201,7 @@ export default function CategoryDetailPage() {
                         )}
 
                         {products.map((product) => {
+                            const isDeleting = deletingProductId === product.id && deleteMutation.isPending;
                             const productCartItems = getProductCartItems(product);
                             const hasItems = productCartItems.length > 0;
                             const isExpanded = Boolean(expandedProductIds[product.id]);
@@ -267,13 +273,20 @@ export default function CategoryDetailPage() {
                                                     size="icon"
                                                     className="cursor-pointer"
                                                     aria-label={`Delete ${product.name}`}
+                                                    aria-busy={isDeleting}
+                                                    disabled={isDeleting}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         if (!confirm("Delete this product?")) return;
+                                                        setDeletingProductId(product.id);
                                                         deleteMutation.mutate(product.id);
                                                     }}
                                                 >
-                                                    <Trash2 className="cursor-pointer text-red-500" />
+                                                    {isDeleting ? (
+                                                        <LoaderCircle className="animate-spin text-red-500" />
+                                                    ) : (
+                                                        <Trash2 className="cursor-pointer text-red-500" />
+                                                    )}
                                                 </Button>
                                             </div>
                                         </TableCell>

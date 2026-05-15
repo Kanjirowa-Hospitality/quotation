@@ -16,7 +16,7 @@ import {
 import { PaginationControls, PaginationMeta } from "@/components/pagination-controls";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCart, CartItem } from "@/lib/store/cart";
-import { Trash2, Pencil, Upload } from "lucide-react";
+import { LoaderCircle, Trash2, Pencil, Upload } from "lucide-react";
 
 type ProductItem = {
     id: string;
@@ -61,6 +61,7 @@ function getPriceRange(items: ProductItem[] = []) {
 export default function AdminProductsPage() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState("");
+    const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
     const debouncedSearch = useDebouncedValue(search);
     const router = useRouter();
     const queryClient = useQueryClient();
@@ -89,12 +90,17 @@ export default function AdminProductsPage() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            await fetch(`/api/products/${id}`, {
+            const res = await fetch(`/api/products/${id}`, {
                 method: "DELETE",
             });
+
+            if (!res.ok) throw new Error("Failed to delete product");
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+        },
+        onSettled: () => {
+            setDeletingProductId(null);
         },
     });
 
@@ -172,6 +178,7 @@ export default function AdminProductsPage() {
                         )}
 
                         {data?.data.map((product) => {
+                            const isDeleting = deletingProductId === product.id && deleteMutation.isPending;
                             const productCartItems: CartItem[] = (product.items ?? []).map((item) => ({
                                 itemId: item.id,
                                 productName: product.name,
@@ -238,13 +245,20 @@ export default function AdminProductsPage() {
                                                 size="icon"
                                                 className="cursor-pointer"
                                                 aria-label={`Delete ${product.name}`}
+                                                aria-busy={isDeleting}
+                                                disabled={isDeleting}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     if (!confirm("Delete this product?")) return;
+                                                    setDeletingProductId(product.id);
                                                     deleteMutation.mutate(product.id);
                                                 }}
                                             >
-                                                <Trash2 className="cursor-pointer text-red-500" />
+                                                {isDeleting ? (
+                                                    <LoaderCircle className="animate-spin text-red-500" />
+                                                ) : (
+                                                    <Trash2 className="cursor-pointer text-red-500" />
+                                                )}
                                             </Button>
                                         </div>
                                     </TableCell>
