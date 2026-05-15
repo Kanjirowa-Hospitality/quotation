@@ -63,7 +63,7 @@ export function ProductCard({ item }: { item: ProductCardItem }) {
                     </div>
                 )}
                 <img
-                    src={item.product.imageUrl || '/placeholder.png'}
+                    src={item.product.imageUrl || '/placeholder.svg'}
                     alt={item.product.name}
                     className="h-40 w-full object-cover object-center rounded"
                 />

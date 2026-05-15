@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,27 @@ import {
     Users,
     User,
 } from "lucide-react";
+
+const SIDEBAR_COLLAPSED_KEY = "kanjirowa-sidebar-collapsed";
+const SIDEBAR_COLLAPSED_EVENT = "kanjirowa-sidebar-collapsed-change";
+
+function getCollapsedSnapshot() {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+}
+
+function getServerCollapsedSnapshot() {
+    return false;
+}
+
+function subscribeToCollapsedChange(onStoreChange: () => void) {
+    window.addEventListener("storage", onStoreChange);
+    window.addEventListener(SIDEBAR_COLLAPSED_EVENT, onStoreChange);
+
+    return () => {
+        window.removeEventListener("storage", onStoreChange);
+        window.removeEventListener(SIDEBAR_COLLAPSED_EVENT, onStoreChange);
+    };
+}
 
 type SidebarUser = {
     name: string | null;
@@ -33,17 +54,16 @@ export function Sidebar({
     user: SidebarUser;
 }) {
     const pathname = usePathname();
-    const [collapsed, setCollapsed] = useState(
-        () => typeof window !== "undefined" && localStorage.getItem("kanjirowa-sidebar-collapsed") === "true"
+    const collapsed = useSyncExternalStore(
+        subscribeToCollapsedChange,
+        getCollapsedSnapshot,
+        getServerCollapsedSnapshot
     );
     const isCollapsed = showCollapse && collapsed;
 
     const toggleCollapsed = () => {
-        setCollapsed((current) => {
-            const next = !current;
-            localStorage.setItem("kanjirowa-sidebar-collapsed", String(next));
-            return next;
-        });
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(!collapsed));
+        window.dispatchEvent(new Event(SIDEBAR_COLLAPSED_EVENT));
     };
 
     return (

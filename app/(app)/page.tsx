@@ -129,7 +129,7 @@ export default function Page() {
                   )}
                   <TableCell>
                     <img
-                      src={item.product.imageUrl || '/placeholder.png'}
+                      src={item.product.imageUrl || '/placeholder.svg'}
                       alt={item.product.name}
                       className="h-12 w-12 rounded object-cover"
                     />

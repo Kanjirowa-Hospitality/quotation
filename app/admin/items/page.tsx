@@ -81,7 +81,7 @@ export default function AdminItemsPage() {
                             <TableRow key={row.id}>
                                 <TableCell>
                                     <img
-                                        src={row.product.imageUrl || "/placeholder.png"}
+                                        src={row.product.imageUrl || "/placeholder.svg"}
                                         alt={row.product.name}
                                         className="h-12 w-12 rounded object-cover"
                                     />

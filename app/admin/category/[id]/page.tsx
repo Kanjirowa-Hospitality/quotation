@@ -235,7 +235,7 @@ export default function CategoryDetailPage() {
                                         )}
                                         <TableCell>
                                             <img
-                                                src={product.imageUrl || "/placeholder.png"}
+                                                src={product.imageUrl || "/placeholder.svg"}
                                                 alt={product.name}
                                                 className="h-12 w-12 rounded object-cover"
                                             />

@@ -34,3 +34,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Quotation PDF Export
+
+PDF export is generated manually with PDFKit so it can run in Vercel's serverless runtime without LibreOffice, Microsoft Word, or a separate conversion service.
+
+DOCX export uses the bundled header/footer template at `app/api/quotation/export/assets/quotation-header-footer-template.docx`. PDF export manually draws matching header/footer assets from that same template.

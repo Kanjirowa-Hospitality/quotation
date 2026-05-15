@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import JSZip from 'jszip'
-import { execFile } from 'child_process'
-import { mkdtemp, readFile, rm, writeFile } from 'fs/promises'
-import { tmpdir } from 'os'
+import PDFDocument from 'pdfkit'
+import { existsSync } from 'fs'
+import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { promisify } from 'util'
 import { requireApiAdmin } from '@/lib/auth'
 import { getValidationError, quotationExportSchema } from '@/lib/validation/product'
 import {
@@ -30,8 +29,6 @@ import {
 
 export const runtime = 'nodejs'
 
-const execFileAsync = promisify(execFile)
-
 type ExportFormat = 'excel' | 'word' | 'pdf'
 type ExportField = 'name' | 'image' | 'description' | 'price'
 type ExportItem = {
@@ -52,9 +49,18 @@ type ExportImage = {
     type: 'jpg' | 'png' | 'gif' | 'bmp'
 }
 
-const TEMPLATE_DOCX_PATH = 'c:\\Users\\gauta\\Desktop\\kanjirowa\\for small business\\disposable-and-paper.docx'
+const HEADER_IMAGE_PATH = join(process.cwd(), 'app', 'api', 'quotation', 'export', 'assets', 'header.png')
+const FOOTER_IMAGE_PATH = join(process.cwd(), 'app', 'api', 'quotation', 'export', 'assets', 'footer.png')
+const DOCX_HEADER_FOOTER_TEMPLATE_PATH =
+    process.env.QUOTATION_TEMPLATE_DOCX_PATH
+    ?? join(process.cwd(), 'app', 'api', 'quotation', 'export', 'assets', 'quotation-header-footer-template.docx')
+const PDF_FONT_REGULAR_PATH = join(process.cwd(), 'app', 'api', 'quotation', 'export', 'assets', 'trebuc.ttf')
+const PDF_FONT_BOLD_PATH = join(process.cwd(), 'app', 'api', 'quotation', 'export', 'assets', 'trebucbd.ttf')
+const PDF_FONT_DEVANAGARI_PATH = join(process.cwd(), 'app', 'api', 'quotation', 'export', 'assets', 'nirmala-text.ttf')
 const TEMPLATE_FONT = 'Trebuchet MS'
-let templateDocxPromise: Promise<JSZip | null> | null = null
+let docxHeaderFooterTemplatePromise: Promise<JSZip | null> | null = null
+let headerImagePromise: Promise<Buffer | null> | null = null
+let footerImagePromise: Promise<Buffer | null> | null = null
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -114,14 +120,30 @@ async function fetchExportImage(url?: string): Promise<ExportImage | null> {
     return null
 }
 
-async function getTemplateDocx() {
-    if (!templateDocxPromise) {
-        templateDocxPromise = readFile(TEMPLATE_DOCX_PATH)
+async function getHeaderImage() {
+    if (!headerImagePromise) {
+        headerImagePromise = readFile(HEADER_IMAGE_PATH).catch(() => null)
+    }
+
+    return headerImagePromise
+}
+
+async function getFooterImage() {
+    if (!footerImagePromise) {
+        footerImagePromise = readFile(FOOTER_IMAGE_PATH).catch(() => null)
+    }
+
+    return footerImagePromise
+}
+
+async function getDocxHeaderFooterTemplate() {
+    if (!docxHeaderFooterTemplatePromise) {
+        docxHeaderFooterTemplatePromise = readFile(DOCX_HEADER_FOOTER_TEMPLATE_PATH)
             .then((file) => JSZip.loadAsync(file))
             .catch(() => null)
     }
 
-    return templateDocxPromise
+    return docxHeaderFooterTemplatePromise
 }
 
 function textRun(text: string, options: { bold?: boolean; size?: number; color?: string } = {}) {
@@ -211,64 +233,6 @@ function formatExcelPrice(priceValue?: number | string) {
     return Number.isFinite(parsed) ? parsed : price
 }
 
-async function convertDocxToPdf(docxBuffer: Buffer) {
-    const workdir = await mkdtemp(join(tmpdir(), 'quotation-export-'))
-    const docxPath = join(workdir, 'quotation.docx')
-    const pdfPath = join(workdir, 'quotation.pdf')
-
-    try {
-        await writeFile(docxPath, docxBuffer)
-
-        try {
-            await execFileAsync('soffice', [
-                '--headless',
-                '--convert-to',
-                'pdf',
-                '--outdir',
-                workdir,
-                docxPath,
-            ])
-            return await readFile(pdfPath)
-        } catch {
-            // Fall through to Word automation on Windows.
-        }
-
-        const script = [
-            '$ErrorActionPreference = "Stop"',
-            `$docx = ${JSON.stringify(docxPath)}`,
-            `$pdf = ${JSON.stringify(pdfPath)}`,
-            '$word = $null',
-            '$doc = $null',
-            'try {',
-            '$word = New-Object -ComObject Word.Application',
-            '$word.Visible = $false',
-            '$doc = $word.Documents.Open($docx)',
-            '$doc.SaveAs([ref] $pdf, [ref] 17)',
-            '} finally {',
-            'if ($doc -ne $null) { try { $doc.Close($false) } catch {} }',
-            'if ($word -ne $null) { try { $word.Quit() } catch {} }',
-            '}',
-            'if (!(Test-Path $pdf)) { throw "Word did not create the PDF file." }',
-        ].join('; ')
-
-        try {
-            await execFileAsync('powershell.exe', ['-NoProfile', '-Command', script], {
-                timeout: 120000,
-            })
-        } catch (error) {
-            try {
-                return await readFile(pdfPath)
-            } catch {
-                throw error
-            }
-        }
-
-        return await readFile(pdfPath)
-    } finally {
-        await rm(workdir, { recursive: true, force: true })
-    }
-}
-
 function tableBorders(size = 4) {
     const border = { style: BorderStyle.SINGLE, size, color: '000000' }
     return {
@@ -281,20 +245,67 @@ function tableBorders(size = 4) {
     }
 }
 
-function emptyHeader() {
+async function documentHeader() {
+    const headerImage = await getHeaderImage()
+
     return new Header({
-        children: [new Paragraph({ children: [] })],
+        children: [
+            new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 0, after: 0 },
+                children: headerImage
+                    ? [
+                        new ImageRun({
+                            data: headerImage,
+                            type: 'png',
+                            transformation: { width: 520, height: 74 },
+                            altText: {
+                                title: 'Kanjirowa',
+                                description: 'Kanjirowa header',
+                                name: 'Kanjirowa',
+                            },
+                        }),
+                    ]
+                    : [textRun('Kanjirowa', { bold: true, size: 28 })],
+            }),
+        ],
     })
 }
 
-function emptyFooter() {
+async function documentFooter() {
+    const footerImage = await getFooterImage()
+
     return new Footer({
-        children: [new Paragraph({ children: [] })],
+        children: [
+            new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 0, after: 0 },
+                children: footerImage
+                    ? [
+                        new ImageRun({
+                            data: footerImage,
+                            type: 'png',
+                            transformation: { width: 520, height: 103 },
+                            altText: {
+                                title: 'Kanjirowa contact details',
+                                description: 'Kanjirowa footer',
+                                name: 'Kanjirowa footer',
+                            },
+                        }),
+                    ]
+                    : [
+                        textRun(
+                            'Butwal SMC-11, Kalikanagar,Rupandehi | +977-9802769737|38|41 | teamkanjirowa@gmail.com | www.kanjirowahospitality.com',
+                            { size: 16, color: '666666' }
+                        ),
+                    ],
+            }),
+        ],
     })
 }
 
-async function patchTemplateHeaderFooter(buffer: Buffer) {
-    const template = await getTemplateDocx()
+async function patchDocxHeaderFooterFromTemplate(buffer: Buffer) {
+    const template = await getDocxHeaderFooterTemplate()
     if (!template) return buffer
 
     const generated = await JSZip.loadAsync(buffer)
@@ -303,12 +314,6 @@ async function patchTemplateHeaderFooter(buffer: Buffer) {
         'word/footer1.xml',
         'word/_rels/header1.xml.rels',
         'word/_rels/footer1.xml.rels',
-        'word/media/image1.png',
-        'word/media/image2.png',
-        'word/media/image3.png',
-        'word/media/image4.png',
-        'word/media/image5.png',
-        'word/media/image6.png',
     ]
 
     await Promise.all(
@@ -318,6 +323,25 @@ async function patchTemplateHeaderFooter(buffer: Buffer) {
             generated.file(path, await file.async('uint8array'))
         })
     )
+
+    const mediaFiles = template.file(/^word\/media\/image\d+\.png$/)
+    await Promise.all(
+        mediaFiles.map(async (file) => {
+            const filename = file.name.replace('word/media/', '')
+            generated.file(`word/media/template-${filename}`, await file.async('uint8array'))
+        })
+    )
+
+    for (const relsPath of ['word/_rels/header1.xml.rels', 'word/_rels/footer1.xml.rels']) {
+        const relsFile = generated.file(relsPath)
+        if (!relsFile) continue
+
+        const rels = await relsFile.async('string')
+        generated.file(
+            relsPath,
+            rels.replace(/Target="media\/(image\d+\.png)"/g, 'Target="media/template-$1"')
+        )
+    }
 
     const contentTypesFile = generated.file('[Content_Types].xml')
     if (contentTypesFile) {
@@ -334,6 +358,224 @@ async function patchTemplateHeaderFooter(buffer: Buffer) {
     }
 
     return Buffer.from(await generated.generateAsync({ type: 'uint8array' }))
+}
+
+function pdfTextHeight(doc: PDFKit.PDFDocument, text: string, width: number, fontSize = 9) {
+    doc.fontSize(fontSize)
+    return doc.heightOfString(text || '-', { width })
+}
+
+function registerPdfFonts(doc: PDFKit.PDFDocument) {
+    const regular = existsSync(PDF_FONT_REGULAR_PATH) ? PDF_FONT_REGULAR_PATH : 'Helvetica'
+    const bold = existsSync(PDF_FONT_BOLD_PATH) ? PDF_FONT_BOLD_PATH : 'Helvetica-Bold'
+    const devanagari = existsSync(PDF_FONT_DEVANAGARI_PATH) ? PDF_FONT_DEVANAGARI_PATH : regular
+
+    if (regular !== 'Helvetica') doc.registerFont('QuotationRegular', regular)
+    if (bold !== 'Helvetica-Bold') doc.registerFont('QuotationBold', bold)
+    if (devanagari !== regular) doc.registerFont('QuotationDevanagari', devanagari)
+
+    return {
+        regular: regular === 'Helvetica' ? 'Helvetica' : 'QuotationRegular',
+        bold: bold === 'Helvetica-Bold' ? 'Helvetica-Bold' : 'QuotationBold',
+        devanagari: devanagari === regular ? (regular === 'Helvetica' ? 'Helvetica' : 'QuotationRegular') : 'QuotationDevanagari',
+    }
+}
+
+function drawPdfHeaderFooter(doc: PDFKit.PDFDocument, headerImage: Buffer | null, footerImage: Buffer | null) {
+    const { width, height, margins } = doc.page
+    const assetX = 36
+    const assetWidth = width - 72
+
+    doc.save()
+    if (headerImage) {
+        doc.image(headerImage, assetX, 14.4, { width: assetWidth })
+    } else {
+        doc.font('Helvetica-Bold').fontSize(18).fillColor('#081833').text('Kanjirowa', margins.left, 32, {
+            align: 'center',
+            width: width - margins.left - margins.right,
+        })
+    }
+
+    if (footerImage) {
+        doc.image(footerImage, assetX, height - 112, { width: assetWidth - 6 })
+    } else {
+        doc.font('Helvetica').fontSize(9).fillColor('#222222').text(
+            'Butwal SMC-11, Kalikanagar,Rupandehi | +977-9802769737|38|41 | teamkanjirowa@gmail.com | www.kanjirowahospitality.com',
+            margins.left,
+            height - 48,
+            { align: 'center', width: width - margins.left - margins.right }
+        )
+    }
+    doc.restore()
+    doc.fillColor('#000000').strokeColor('#000000')
+}
+
+async function buildPdfBuffer({
+    items,
+    fields,
+    quotationDate,
+    customerName,
+    customerAddress,
+    quotationTitle,
+}: {
+    items: ExportItem[]
+    fields: ExportField[]
+    quotationDate: string
+    customerName: string
+    customerAddress: string
+    quotationTitle: string
+}) {
+    const [headerImage, footerImage] = await Promise.all([getHeaderImage(), getFooterImage()])
+    const doc = new PDFDocument({
+        size: 'A4',
+        margins: { top: 118, right: 56, bottom: 122, left: 56 },
+        bufferPages: true,
+    })
+    const pdfFonts = registerPdfFonts(doc)
+    const chunks: Buffer[] = []
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk))
+    const finished = new Promise<Buffer>((resolve, reject) => {
+        doc.on('end', () => resolve(Buffer.concat(chunks)))
+        doc.on('error', reject)
+    })
+
+    const startPage = () => {
+        drawPdfHeaderFooter(doc, headerImage, footerImage)
+        doc.y = 124
+    }
+
+    startPage()
+    doc.font(pdfFonts.regular).fontSize(9.95).text(quotationDate, 56, 123.6, {
+        align: 'right',
+        width: 483.3,
+    })
+    doc.y = 142
+    doc.font(pdfFonts.regular).fontSize(9.95)
+    doc.text('To,')
+    doc.text(customerName)
+    doc.text(customerAddress)
+    doc.y = 193.2
+    doc.font(pdfFonts.bold).fontSize(12).text(quotationTitle, 56, doc.y, {
+        align: 'center',
+        width: 483.3,
+    })
+    doc.y = 215.05
+
+    const columns = [
+        { label: 'S.N', width: 30.35 },
+        { label: 'Image', width: 70 },
+        { label: 'Name', width: 72.5 },
+        { label: 'Description', width: 165 },
+        { label: 'Unit', width: 55 },
+        { label: 'Price', width: 90.5 },
+    ]
+    const tableX = doc.page.margins.left
+    const drawCell = (text: string, x: number, y: number, width: number, height: number, options: { bold?: boolean; fill?: string; align?: 'left' | 'center' | 'right'; fontSize?: number } = {}) => {
+        if (options.fill) {
+            doc.rect(x, y, width, height).fillAndStroke(options.fill, '#000000')
+            doc.fillColor('#000000')
+        } else {
+            doc.rect(x, y, width, height).stroke()
+        }
+        doc.font(options.bold ? pdfFonts.bold : pdfFonts.regular).fontSize(options.fontSize ?? 9.95).text(text || '-', x + 3, y + 7,
+            {
+                width: width - 6,
+                align: options.align ?? 'center',
+            })
+    }
+    const drawHeaderRow = () => {
+        let x = tableX
+        const y = doc.y
+        columns.forEach((column) => {
+            drawCell(column.label, x, y, column.width, 21.25, { bold: true, fill: '#e7e6e6', fontSize: column.label === 'S.N' ? 9 : 9.95 })
+            x += column.width
+        })
+        doc.y = y + 21.25
+    }
+    const ensureSpace = (height: number, repeatTableHeader = false) => {
+        if (doc.y + height > doc.page.height - doc.page.margins.bottom - 8) {
+            doc.addPage()
+            startPage()
+            if (repeatTableHeader) {
+                drawHeaderRow()
+            }
+        }
+    }
+
+    drawHeaderRow()
+
+    for (let index = 0; index < items.length; index += 1) {
+        const item = items[index]
+        const description = fields.includes('description') ? formatDescriptionDetails(item) : ''
+        const name = fields.includes('name') ? (item.productName ?? '') : ''
+        const unit = formatUnit(item)
+        const price = fields.includes('price') ? formatPrice(item.price) : ''
+        const rowHeight = Math.max(
+            21.25,
+            fields.includes('image') ? 62.5 : 0,
+            pdfTextHeight(doc, name, columns[2].width - 6, 9.95),
+            pdfTextHeight(doc, description, columns[3].width - 6, 9.95),
+            pdfTextHeight(doc, unit, columns[4].width - 6, 9.95),
+            pdfTextHeight(doc, price, columns[5].width - 6, 9.95)
+        ) + 8
+        ensureSpace(rowHeight, true)
+
+        let x = tableX
+        const y = doc.y
+        drawCell(`${index + 1}.`, x, y, columns[0].width, rowHeight)
+        x += columns[0].width
+        doc.rect(x, y, columns[1].width, rowHeight).stroke()
+        if (fields.includes('image')) {
+            const image = await fetchExportImage(item.imageUrl)
+            if (image) {
+                try {
+                    doc.image(Buffer.from(image.data), x + 7, y + 7, { fit: [44, rowHeight - 14], align: 'center', valign: 'center' })
+                } catch {
+                    doc.font(pdfFonts.regular).fontSize(7).text(item.imageUrl ?? '', x + 4, y + 6, { width: columns[1].width - 8 })
+                }
+            }
+        }
+        x += columns[1].width
+        drawCell(name, x, y, columns[2].width, rowHeight)
+        x += columns[2].width
+        drawCell(description, x, y, columns[3].width, rowHeight, { align: 'left' })
+        x += columns[3].width
+        drawCell(unit, x, y, columns[4].width, rowHeight)
+        x += columns[4].width
+        drawCell(price, x, y, columns[5].width, rowHeight)
+        doc.y = y + rowHeight
+    }
+
+    doc.moveDown(1)
+    ensureSpace(96)
+    doc.x = doc.page.margins.left
+    doc.font(pdfFonts.bold).fontSize(10).text('PRICES ARE EXCLUSIVE OF 13% VAT', doc.page.margins.left, doc.y, {
+        width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
+        align: 'left',
+    })
+    doc.moveDown(0.6)
+    doc.font(pdfFonts.regular).fontSize(9).text(
+        'Disclaimer: Due to current fluctuations in pricing of raw material and stock availability, prices and stock mentioned in this quotation are subject to confirmation before order finalization.',
+        doc.page.margins.left,
+        doc.y,
+        {
+            align: 'left',
+            width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
+        }
+    )
+    doc.moveDown(0.6)
+    doc.font(pdfFonts.devanagari).fontSize(9).text(
+        'कच्चा पदार्थको मूल्य तथा स्टक उपलब्धतामा हाल भइरहेको उतार–चढावका कारण, बजार स्थिर नभएसम्म यस quotation मा उल्लेखित मूल्य आजको दिनका लागि मात्र मान्य हुनेछ। भोलि वा सोपश्चात् अर्डर पुष्टि गर्नु अघि कृपया स्टोरमा सम्पर्क गरी मूल्य तथा स्टक पुनः पुष्टि गर्नुहुन अनुरोध गरिन्छ।',
+        doc.page.margins.left,
+        doc.y,
+        {
+            align: 'left',
+            width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
+        }
+    )
+
+    doc.end()
+    return finished
 }
 
 // ---------------------------------------------------------------------------
@@ -564,8 +806,8 @@ export async function POST(req: NextRequest) {
             },
             sections: [
                 {
-                    headers: { default: emptyHeader() },
-                    footers: { default: emptyFooter() },
+                    headers: { default: await documentHeader() },
+                    footers: { default: await documentFooter() },
                     properties: {
                         page: {
                             margin: {
@@ -617,7 +859,7 @@ export async function POST(req: NextRequest) {
             ],
         })
 
-        return patchTemplateHeaderFooter(await Packer.toBuffer(doc))
+        return patchDocxHeaderFooterFromTemplate(await Packer.toBuffer(doc))
     }
 
     // ---------- Word ----------
@@ -632,7 +874,14 @@ export async function POST(req: NextRequest) {
 
     // ---------- PDF ----------
     if (format === 'pdf') {
-        const buffer = await convertDocxToPdf(await buildWordBuffer())
+        const buffer = await buildPdfBuffer({
+            items,
+            fields,
+            quotationDate,
+            customerName,
+            customerAddress,
+            quotationTitle,
+        })
         return fileResponse(buffer, 'application/pdf', 'quotation.pdf')
     }
 
