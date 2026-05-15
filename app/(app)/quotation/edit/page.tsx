@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useMemo, useState } from 'react'
-import { Check, Download, FileSpreadsheet, FileText, Trash2 } from 'lucide-react'
+import { Check, Download, FileSpreadsheet, FileText, LoaderCircle, Trash2 } from 'lucide-react'
 import { parsePriceInput } from '@/lib/validation/product'
 
 const fields = [
@@ -39,6 +39,10 @@ type QuotationMeta = {
     customerAddress: string
     quotationTitle: string
 }
+type ExportStatus = {
+    format: ExportFormat
+    state: 'loading' | 'success' | 'error'
+} | null
 
 const exportFormats: {
     id: ExportFormat
@@ -85,7 +89,7 @@ export default function EditQuotationPage() {
         new Set(['name', 'image', 'price', 'description'])
     )
     const [editableItems, setEditableItems] = useState<CartItem[] | null>(null)
-    const [selectedFormat, setSelectedFormat] = useState<ExportFormat | null>(null)
+    const [exportStatus, setExportStatus] = useState<ExportStatus>(null)
     const [formatDialogOpen, setFormatDialogOpen] = useState(false)
     const [quotationMeta, setQuotationMeta] = useState<QuotationMeta>({
         quotationDate: '2083/1/21',
@@ -120,29 +124,46 @@ export default function EditQuotationPage() {
     }
 
     const exportFile = async (format: ExportFormat) => {
-        setSelectedFormat(format)
-        const res = await fetch('/api/quotation/export', {
-            method: 'POST',
-            body: JSON.stringify({
-                items: quotationItems,
-                fields: Array.from(selected),
-                format,
-                meta: quotationMeta,
-            }),
-            headers: { 'Content-Type': 'application/json' },
-        })
-        if (!res.ok) {
-            setSelectedFormat(null)
-            throw new Error('Failed to generate quotation')
+        setExportStatus({ format, state: 'loading' })
+
+        try {
+            const res = await fetch('/api/quotation/export', {
+                method: 'POST',
+                body: JSON.stringify({
+                    items: quotationItems,
+                    fields: Array.from(selected),
+                    format,
+                    meta: quotationMeta,
+                }),
+                headers: { 'Content-Type': 'application/json' },
+            })
+            if (!res.ok) {
+                const payload = await res.json().catch(() => null)
+                throw new Error(payload?.error ?? 'Failed to generate quotation')
+            }
+            const blob = await res.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `quotation.${format === 'excel' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'docx'}`
+            a.click()
+            window.URL.revokeObjectURL(url)
+            setExportStatus({ format, state: 'success' })
+            window.setTimeout(() => {
+                setExportStatus((current) =>
+                    current?.format === format && current.state === 'success' ? null : current
+                )
+                setFormatDialogOpen(false)
+            }, 1800)
+        } catch (error) {
+            setExportStatus({ format, state: 'error' })
+            window.setTimeout(() => {
+                setExportStatus((current) =>
+                    current?.format === format && current.state === 'error' ? null : current
+                )
+            }, 2400)
+            alert(error instanceof Error ? error.message : 'Failed to generate quotation')
         }
-        const blob = await res.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `quotation.${format === 'excel' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'docx'}`
-        a.click()
-        window.URL.revokeObjectURL(url)
-        window.setTimeout(() => setFormatDialogOpen(false), 500)
     }
 
     return (
@@ -262,14 +283,18 @@ export default function EditQuotationPage() {
                             <div className="space-y-2">
                                 {exportFormats.map((format) => {
                                     const Icon = format.icon
-                                    const isSelected = selectedFormat === format.id
+                                    const status =
+                                        exportStatus?.format === format.id ? exportStatus.state : null
+                                    const isGenerating = exportStatus?.state === 'loading'
 
                                     return (
                                         <button
                                             key={format.id}
                                             type="button"
                                             onClick={() => exportFile(format.id)}
-                                            className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-primary/5"
+                                            disabled={isGenerating}
+                                            aria-busy={status === 'loading'}
+                                            className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-70"
                                         >
                                             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
                                                 <Icon className="h-4 w-4" />
@@ -285,9 +310,19 @@ export default function EditQuotationPage() {
                                                     {format.description}
                                                 </p>
                                             </div>
-                                            {isSelected && (
+                                            {status === 'loading' && (
+                                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                                                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                                                </span>
+                                            )}
+                                            {status === 'success' && (
                                                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-green-600 text-white">
                                                     <Check className="h-4 w-4" />
+                                                </span>
+                                            )}
+                                            {status === 'error' && (
+                                                <span className="text-xs font-medium text-destructive">
+                                                    Failed
                                                 </span>
                                             )}
                                         </button>
@@ -321,7 +356,7 @@ export default function EditQuotationPage() {
                                     <TableRow key={item.itemId}>
                                         <TableCell>
                                             <img
-                                                src={item.imageUrl || '/placeholder.png'}
+                                                src={item.imageUrl || '/placeholder.svg'}
                                                 alt={item.productName}
                                                 className="h-12 w-12 rounded-md object-cover"
                                             />

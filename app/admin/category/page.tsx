@@ -208,7 +208,7 @@ export default function AdminCategoriesPage() {
                                     )}
                                     <TableCell>
                                         <img
-                                            src={cat.imageUrl || "/placeholder.png"}
+                                            src={cat.imageUrl || "/placeholder.svg"}
                                             alt={cat.name}
                                             className="h-12 w-12 rounded object-cover"
                                         />

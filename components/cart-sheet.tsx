@@ -51,7 +51,7 @@ export function CartSheet({ onClose }: { onClose?: () => void }) {
                             >
                                 <div className="flex gap-3">
                                     <img
-                                        src={item.imageUrl || '/placeholder.png'}
+                                        src={item.imageUrl || '/placeholder.svg'}
                                         alt={item.productName}
                                         className="h-14 w-14 shrink-0 rounded-md object-cover"
                                     />
