@@ -68,9 +68,9 @@ export default function ProductImportPage() {
     const blockingRows = session?.rows.filter(hasBlockingWarnings) ?? [];
     const warningCount = session?.rows.reduce((total, row) => total + getRowWarnings(row).length, 0) ?? 0;
     const loadingMessage = isUploading
-        ? "Reading Excel file and extracting images..."
+        ? "Reading Excel file and uploading images..."
         : isImporting
-            ? "Uploading images to Cloudinary and saving products..."
+            ? "Saving products..."
             : "";
 
     const updateRow = (rowId: string, patch: Partial<ImportRow>) => {

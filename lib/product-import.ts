@@ -392,20 +392,25 @@ export async function createProductImportSession(file: File) {
 
     await mkdir(getSessionDir(sessionId), { recursive: true });
 
-    const rawRows = utils.sheet_to_json<ExcelRow>(sheet, {
-        defval: "",
-    });
-    const extractedImages = await extractEmbeddedImages(bytes, sessionId);
-    const session: ProductImportSession = {
-        id: sessionId,
-        originalFileName: file.name,
-        createdAt: new Date().toISOString(),
-        rows: normalizeRows(rawRows, extractedImages),
-    };
+    try {
+        const rawRows = utils.sheet_to_json<ExcelRow>(sheet, {
+            defval: "",
+        });
+        const extractedImages = await extractEmbeddedImages(bytes, sessionId);
+        const rows = await uploadImportImagesToCloudinary(sessionId, normalizeRows(rawRows, extractedImages));
+        const session: ProductImportSession = {
+            id: sessionId,
+            originalFileName: file.name,
+            createdAt: new Date().toISOString(),
+            rows,
+        };
 
-    await writeFile(getProductImportSessionPath(sessionId), JSON.stringify(session, null, 2));
+        await writeFile(getProductImportSessionPath(sessionId), JSON.stringify(session, null, 2));
 
-    return session;
+        return session;
+    } finally {
+        await deleteProductImportSession(sessionId);
+    }
 }
 
 export async function readProductImportSession(sessionId: string) {

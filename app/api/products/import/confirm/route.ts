@@ -4,9 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
     deleteProductImportSession,
     ProductImportRow,
-    readProductImportSession,
     slugifyImportValue,
-    uploadImportImagesToCloudinary,
 } from "@/lib/product-import";
 import { importPriceSchema } from "@/lib/validation/product";
 
@@ -27,7 +25,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Valid import session id is required." }, { status: 400 });
         }
 
-        const rows = body.rows?.length ? body.rows : (await readProductImportSession(sessionId)).rows;
+        const rows = body.rows;
+
+        if (!rows?.length) {
+            return NextResponse.json({ error: "Import rows are required." }, { status: 400 });
+        }
+
         const normalizedRows = rows.map((row) => {
             const price = importPriceSchema.safeParse(row.price);
 
@@ -61,7 +64,7 @@ export async function POST(req: Request) {
             );
         }
 
-        const rowsWithCloudinaryImages = await uploadImportImagesToCloudinary(sessionId, normalizedRows);
+        const rowsWithCloudinaryImages = normalizedRows;
 
         const result = await prisma.$transaction(async (tx) => {
             let createdCategories = 0;
