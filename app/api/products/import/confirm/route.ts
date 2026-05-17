@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
-    deleteProductImportRoot,
+    deleteProductImportSession,
     ProductImportRow,
     readProductImportSession,
     slugifyImportValue,
@@ -27,8 +27,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Valid import session id is required." }, { status: 400 });
         }
 
-        const session = await readProductImportSession(sessionId);
-        const rows = body.rows?.length ? body.rows : session.rows;
+        const rows = body.rows?.length ? body.rows : (await readProductImportSession(sessionId)).rows;
         const normalizedRows = rows.map((row) => {
             const price = importPriceSchema.safeParse(row.price);
 
@@ -187,7 +186,7 @@ export async function POST(req: Request) {
             };
         });
 
-        await deleteProductImportRoot();
+        await deleteProductImportSession(sessionId);
 
         return NextResponse.json(result);
     } catch (error) {

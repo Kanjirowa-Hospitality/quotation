@@ -6,6 +6,7 @@ import { AlertTriangle, Check, FileSpreadsheet, Loader2, Upload } from "lucide-r
 import { Button, LoadingButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PRODUCT_IMPORT_HEADERS } from "@/lib/product-import-headers";
 import { parsePriceInput } from "@/lib/validation/product";
 
 type ImportRow = {
@@ -155,6 +156,19 @@ export default function ProductImportPage() {
                         <p className="text-sm text-muted-foreground">
                             Upload an Excel file, edit the extracted rows if needed, then confirm.
                         </p>
+                        <div className="mt-3 max-w-full overflow-x-auto rounded-md border bg-muted/30">
+                            <table className="w-max min-w-full text-xs">
+                                <TableHeader>
+                                    <TableRow>
+                                        {PRODUCT_IMPORT_HEADERS.map((header) => (
+                                            <TableHead key={header} className="h-8 whitespace-nowrap px-2">
+                                                {header}
+                                            </TableHead>
+                                        ))}
+                                    </TableRow>
+                                </TableHeader>
+                            </table>
+                        </div>
                     </div>
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -269,11 +283,14 @@ export default function ProductImportPage() {
                                     <TableCell className="align-top">
                                         <div className="flex items-center gap-2">
                                             {row.imageUrl ? (
+                                                <>
+                                                {/* eslint-disable-next-line @next/next/no-img-element -- Import previews may be local temporary API URLs or external Cloudinary URLs. */}
                                                 <img
                                                     src={row.imageUrl}
                                                     alt={row.productName || "Imported product"}
                                                     className="h-12 w-12 shrink-0 rounded object-cover"
                                                 />
+                                                </>
                                             ) : (
                                                 <div className="h-12 w-12 shrink-0 rounded bg-muted" />
                                             )}

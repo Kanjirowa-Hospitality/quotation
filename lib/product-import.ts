@@ -1,8 +1,10 @@
 import crypto from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import JSZip from "jszip";
 import { read, utils } from "xlsx";
+import { PRODUCT_IMPORT_HEADERS } from "@/lib/product-import-headers";
 
 export type ProductImportRow = {
     id: string;
@@ -34,7 +36,7 @@ type ExtractedImages = {
     byDispImgId: Map<string, string>;
 };
 
-const PUBLIC_IMPORT_ROOT = path.join(process.cwd(), "public", "uploads", "imports");
+const IMPORT_ROOT = path.join(os.tmpdir(), "kanjirowa-product-imports");
 const SESSION_FILE = "session.json";
 
 const HEADER_ALIASES: Record<string, keyof Omit<ProductImportRow, "id" | "rowNumber" | "price" | "warnings"> | "price"> = {
@@ -92,10 +94,10 @@ function slugPart(value: string) {
 }
 
 function getSessionDir(sessionId: string) {
-    return path.join(PUBLIC_IMPORT_ROOT, sessionId);
+    return path.join(IMPORT_ROOT, sessionId);
 }
 
-function getImageContentType(filePath: string) {
+export function getImportImageContentType(filePath: string) {
     const ext = path.extname(filePath).toLowerCase();
 
     if (ext === ".png") return "image/png";
@@ -104,12 +106,20 @@ function getImageContentType(filePath: string) {
     return "application/octet-stream";
 }
 
+function getImportImagePath(sessionId: string, fileName: string) {
+    return path.join(getSessionDir(sessionId), path.basename(fileName));
+}
+
+export function getProductImportImagePath(sessionId: string, fileName: string) {
+    return getImportImagePath(sessionId, fileName);
+}
+
 export function getProductImportSessionPath(sessionId: string) {
     return path.join(getSessionDir(sessionId), SESSION_FILE);
 }
 
-function getPublicImportUrl(sessionId: string, fileName: string) {
-    return `/uploads/imports/${sessionId}/${fileName}`;
+function getImportImageUrl(sessionId: string, fileName: string) {
+    return `/api/products/import/image?sessionId=${encodeURIComponent(sessionId)}&file=${encodeURIComponent(fileName)}`;
 }
 
 function getExtension(filePath: string) {
@@ -131,9 +141,15 @@ function getCloudinarySignature(params: Record<string, string>, apiSecret: strin
 }
 
 function getLocalImportPath(imageUrl: string) {
-    if (!imageUrl.startsWith("/uploads/imports/")) return "";
+    if (!imageUrl.startsWith("/api/products/import/image?")) return "";
 
-    return path.join(process.cwd(), "public", ...imageUrl.split("/").filter(Boolean));
+    const url = new URL(imageUrl, "http://localhost");
+    const sessionId = url.searchParams.get("sessionId") ?? "";
+    const fileName = url.searchParams.get("file") ?? "";
+
+    if (!/^[a-zA-Z0-9-]+$/.test(sessionId) || !fileName) return "";
+
+    return getImportImagePath(sessionId, fileName);
 }
 
 function getCloudinaryPublicId(sessionId: string, filePath: string) {
@@ -243,8 +259,8 @@ async function extractEmbeddedImages(buffer: Buffer, sessionId: string) {
         const excelRowNumber = row + 1;
         const fileName = `row-${excelRowNumber}${getExtension(mediaPath)}`;
 
-        await writeFile(path.join(getSessionDir(sessionId), fileName), imageBuffer);
-        imageByRow.set(excelRowNumber, getPublicImportUrl(sessionId, fileName));
+        await writeFile(getImportImagePath(sessionId, fileName), imageBuffer);
+        imageByRow.set(excelRowNumber, getImportImageUrl(sessionId, fileName));
     }
 
     return { byRow: imageByRow, byDispImgId };
@@ -276,8 +292,8 @@ async function extractDispImgImages(zip: JSZip, sessionId: string) {
         const imageBuffer = await mediaFile.async("nodebuffer");
         const fileName = `${id.replace(/[^a-zA-Z0-9_-]/g, "_")}${getExtension(mediaPath)}`;
 
-        await writeFile(path.join(getSessionDir(sessionId), fileName), imageBuffer);
-        images.set(id, getPublicImportUrl(sessionId, fileName));
+        await writeFile(getImportImagePath(sessionId, fileName), imageBuffer);
+        images.set(id, getImportImageUrl(sessionId, fileName));
     }
 
     return images;
@@ -328,12 +344,42 @@ function normalizeRows(rows: ExcelRow[], extractedImages: ExtractedImages) {
     });
 }
 
+function getWorksheetHeaders(sheet: NonNullable<ReturnType<typeof read>["Sheets"][string]>) {
+    const rows = utils.sheet_to_json<unknown[]>(sheet, {
+        header: 1,
+        defval: "",
+        blankrows: false,
+    });
+
+    const headers = (rows[0] ?? []).map((value) => valueToString(value));
+
+    while (headers.length && !headers[headers.length - 1]) {
+        headers.pop();
+    }
+
+    return headers;
+}
+
+function validateImportHeaders(headers: string[]) {
+    const received = PRODUCT_IMPORT_HEADERS.map((_, index) => headers[index] ?? "");
+    const matches = PRODUCT_IMPORT_HEADERS.every(
+        (header, index) => normalizeHeader(received[index] ?? "") === normalizeHeader(header)
+    );
+
+    if (matches && headers.length === PRODUCT_IMPORT_HEADERS.length) return;
+
+    throw new Error(
+        [
+            "Required field doesn't match.",
+            `Expected columns in this exact order: ${PRODUCT_IMPORT_HEADERS.join(", ")}`,
+            `Received columns: ${headers.length ? headers.join(", ") : "none"}`,
+        ].join(" ")
+    );
+}
+
 export async function createProductImportSession(file: File) {
     const bytes = Buffer.from(await file.arrayBuffer());
     const sessionId = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-
-    await mkdir(getSessionDir(sessionId), { recursive: true });
-
     const workbook = read(bytes, { type: "buffer" });
     const firstSheetName = workbook.SheetNames[0];
 
@@ -341,7 +387,12 @@ export async function createProductImportSession(file: File) {
         throw new Error("The Excel file does not contain any sheets.");
     }
 
-    const rawRows = utils.sheet_to_json<ExcelRow>(workbook.Sheets[firstSheetName], {
+    const sheet = workbook.Sheets[firstSheetName];
+    validateImportHeaders(getWorksheetHeaders(sheet));
+
+    await mkdir(getSessionDir(sessionId), { recursive: true });
+
+    const rawRows = utils.sheet_to_json<ExcelRow>(sheet, {
         defval: "",
     });
     const extractedImages = await extractEmbeddedImages(bytes, sessionId);
@@ -395,7 +446,7 @@ export async function uploadImportImagesToCloudinary(sessionId: string, rows: Pr
 
         form.append(
             "file",
-            new Blob([fileBuffer], { type: getImageContentType(localPath) }),
+            new Blob([fileBuffer], { type: getImportImageContentType(localPath) }),
             path.basename(localPath)
         );
         form.append("api_key", apiKey);
@@ -437,7 +488,7 @@ export async function deleteProductImportSession(sessionId: string) {
 }
 
 export async function deleteProductImportRoot() {
-    await rm(PUBLIC_IMPORT_ROOT, { recursive: true, force: true });
+    await rm(IMPORT_ROOT, { recursive: true, force: true });
 }
 
 export function slugifyImportValue(value: string) {

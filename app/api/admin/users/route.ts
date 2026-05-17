@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hashPassword, requireApiSuperAdmin, USER_ROLES } from "@/lib/auth";
+import { hashPassword, isProtectedSuperAdminEmail, requireApiSuperAdmin, USER_ROLES } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createAdminUserSchema, getValidationError } from "@/lib/validation/auth";
 
@@ -18,7 +18,13 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ users });
+  return NextResponse.json({
+    users: users.map((user) => ({
+      ...user,
+      isProtected: isProtectedSuperAdminEmail(user.email),
+      canDelete: auth.user?.id !== user.id && !isProtectedSuperAdminEmail(user.email),
+    })),
+  });
 }
 
 export async function POST(req: Request) {

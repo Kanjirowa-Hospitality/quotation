@@ -22,9 +22,12 @@ export async function POST(req: Request) {
 
         return NextResponse.json(session);
     } catch (error) {
+        const message = error instanceof Error ? error.message : "Could not read the Excel file.";
+        const status = message.startsWith("Required field doesn't match.") ? 400 : 500;
+
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Could not read the Excel file." },
-            { status: 500 }
+            { error: message },
+            { status }
         );
     }
 }

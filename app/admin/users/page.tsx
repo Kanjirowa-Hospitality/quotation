@@ -34,6 +34,8 @@ type AdminUser = {
     email: string;
     role: "ADMIN" | "SUPER_ADMIN";
     createdAt: string;
+    isProtected: boolean;
+    canDelete: boolean;
 };
 
 type UsersResponse = {
@@ -299,7 +301,19 @@ export default function AdminUsersPage() {
                                                 <Pencil className="size-3" />
                                                 Edit
                                             </Button>
-                                            <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(user)}>
+                                            <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                onClick={() => openDeleteDialog(user)}
+                                                disabled={!user.canDelete}
+                                                title={
+                                                    user.isProtected
+                                                        ? "Protected super admin account"
+                                                        : !user.canDelete
+                                                          ? "You cannot delete your own account"
+                                                          : undefined
+                                                }
+                                            >
                                                 <Trash2 className="size-3" />
                                                 Delete
                                             </Button>
