@@ -13,6 +13,9 @@ type ImportBody = {
     rows?: ProductImportRow[];
 };
 
+const IMPORT_TRANSACTION_TIMEOUT_MS = 60_000;
+const IMPORT_TRANSACTION_MAX_WAIT_MS = 10_000;
+
 export async function POST(req: Request) {
     try {
         const auth = await requireApiSuperAdmin();
@@ -66,128 +69,134 @@ export async function POST(req: Request) {
 
         const rowsWithCloudinaryImages = normalizedRows;
 
-        const result = await prisma.$transaction(async (tx) => {
-            let createdCategories = 0;
-            let createdProducts = 0;
-            let createdVariants = 0;
-            let createdSaleOptions = 0;
-            const categoryIds = new Map<string, string>();
-            const productIds = new Map<string, string>();
+        const result = await prisma.$transaction(
+            async (tx) => {
+                let createdCategories = 0;
+                let createdProducts = 0;
+                let createdVariants = 0;
+                let createdSaleOptions = 0;
+                const categoryIds = new Map<string, string>();
+                const productIds = new Map<string, string>();
 
-            for (const row of rowsWithCloudinaryImages) {
-                const categorySlug = slugifyImportValue(row.categoryName);
-                let categoryId = categoryIds.get(categorySlug);
+                for (const row of rowsWithCloudinaryImages) {
+                    const categorySlug = slugifyImportValue(row.categoryName);
+                    let categoryId = categoryIds.get(categorySlug);
 
-                if (!categoryId) {
-                    const existingCategory = await tx.category.findUnique({
-                        where: { slug: categorySlug },
-                        select: { id: true, imageUrl: true },
-                    });
+                    if (!categoryId) {
+                        const existingCategory = await tx.category.findUnique({
+                            where: { slug: categorySlug },
+                            select: { id: true, imageUrl: true },
+                        });
 
-                    if (existingCategory) {
-                        categoryId = existingCategory.id;
-                    } else {
-                        const category = await tx.category.create({
-                            data: {
-                                name: row.categoryName,
-                                slug: categorySlug,
-                                imageUrl: row.imageUrl || null,
+                        if (existingCategory) {
+                            categoryId = existingCategory.id;
+                        } else {
+                            const category = await tx.category.create({
+                                data: {
+                                    name: row.categoryName,
+                                    slug: categorySlug,
+                                    imageUrl: row.imageUrl || null,
+                                },
+                                select: { id: true },
+                            });
+
+                            categoryId = category.id;
+                            createdCategories += 1;
+                        }
+
+                        categoryIds.set(categorySlug, categoryId);
+                    }
+
+                    if (row.imageUrl) {
+                        await tx.category.updateMany({
+                            where: {
+                                id: categoryId,
+                                OR: [{ imageUrl: null }, { imageUrl: "" }],
+                            },
+                            data: { imageUrl: row.imageUrl },
+                        });
+                    }
+
+                    const productKey = `${categoryId}:${row.productName.toLowerCase()}`;
+                    let productId = productIds.get(productKey);
+
+                    if (!productId) {
+                        const existingProduct = await tx.product.findFirst({
+                            where: {
+                                categoryId,
+                                name: { equals: row.productName, mode: "insensitive" },
                             },
                             select: { id: true },
                         });
 
-                        categoryId = category.id;
-                        createdCategories += 1;
+                        if (existingProduct) {
+                            productId = existingProduct.id;
+                        } else {
+                            const product = await tx.product.create({
+                                data: {
+                                    name: row.productName,
+                                    categoryId,
+                                    imageUrl: row.imageUrl || null,
+                                },
+                                select: { id: true },
+                            });
+
+                            productId = product.id;
+                            createdProducts += 1;
+                        }
+
+                        productIds.set(productKey, productId);
                     }
 
-                    categoryIds.set(categorySlug, categoryId);
-                }
+                    if (row.imageUrl) {
+                        await tx.product.updateMany({
+                            where: {
+                                id: productId,
+                                OR: [{ imageUrl: null }, { imageUrl: "" }],
+                            },
+                            data: { imageUrl: row.imageUrl },
+                        });
+                    }
 
-                if (row.imageUrl) {
-                    await tx.category.updateMany({
-                        where: {
-                            id: categoryId,
-                            OR: [{ imageUrl: null }, { imageUrl: "" }],
-                        },
-                        data: { imageUrl: row.imageUrl },
-                    });
-                }
-
-                const productKey = `${categoryId}:${row.productName.toLowerCase()}`;
-                let productId = productIds.get(productKey);
-
-                if (!productId) {
-                    const existingProduct = await tx.product.findFirst({
-                        where: {
-                            categoryId,
-                            name: { equals: row.productName, mode: "insensitive" },
+                    const variant = await tx.productVariant.create({
+                        data: {
+                            productId,
+                            description: row.description || null,
+                            weight: row.weight || null,
+                            size: row.size || null,
+                            color: row.color || null,
+                            attributes: row.brand ? { brand: row.brand } : {},
                         },
                         select: { id: true },
                     });
 
-                    if (existingProduct) {
-                        productId = existingProduct.id;
-                    } else {
-                        const product = await tx.product.create({
-                            data: {
-                                name: row.productName,
-                                categoryId,
-                                imageUrl: row.imageUrl || null,
-                            },
-                            select: { id: true },
-                        });
+                    createdVariants += 1;
 
-                        productId = product.id;
-                        createdProducts += 1;
-                    }
-
-                    productIds.set(productKey, productId);
-                }
-
-                if (row.imageUrl) {
-                    await tx.product.updateMany({
-                        where: {
-                            id: productId,
-                            OR: [{ imageUrl: null }, { imageUrl: "" }],
+                    await tx.saleOption.create({
+                        data: {
+                            variantId: variant.id,
+                            unit: row.unit || "unit",
+                            price: row.price ?? 0,
+                            attributes: {},
                         },
-                        data: { imageUrl: row.imageUrl },
                     });
+
+                    createdSaleOptions += 1;
                 }
 
-                const variant = await tx.productVariant.create({
-                    data: {
-                        productId,
-                        description: row.description || null,
-                        weight: row.weight || null,
-                        size: row.size || null,
-                        color: row.color || null,
-                        attributes: row.brand ? { brand: row.brand } : {},
-                    },
-                    select: { id: true },
-                });
-
-                createdVariants += 1;
-
-                await tx.saleOption.create({
-                    data: {
-                        variantId: variant.id,
-                        unit: row.unit || "unit",
-                        price: row.price ?? 0,
-                        attributes: {},
-                    },
-                });
-
-                createdSaleOptions += 1;
+                return {
+                    importedRows: rowsWithCloudinaryImages.length,
+                    createdCategories,
+                    createdProducts,
+                    createdVariants,
+                    createdSaleOptions,
+                };
+            },
+            {
+                maxWait: IMPORT_TRANSACTION_MAX_WAIT_MS,
+                timeout: IMPORT_TRANSACTION_TIMEOUT_MS,
             }
-
-            return {
-                importedRows: rowsWithCloudinaryImages.length,
-                createdCategories,
-                createdProducts,
-                createdVariants,
-                createdSaleOptions,
-            };
-        });
+        );
 
         await deleteProductImportSession(sessionId);
 
