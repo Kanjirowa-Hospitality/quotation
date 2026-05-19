@@ -6,12 +6,14 @@ import { Button, LoadingButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
+import {
+    cloudinaryMaxImageSizeLabel,
+    cloudinaryUploadOptions,
+    cloudinaryUploadPreset,
+    getUploadedCloudinaryImageUrl,
+    type CloudinaryUploadInfo,
+} from "@/lib/cloudinary";
 import { CldUploadButton, type CloudinaryUploadWidgetResults } from "next-cloudinary";
-
-type CloudinaryUploadInfo = {
-    secure_url?: string;
-};
 
 function getCategorySlug(value: string) {
     return value
@@ -109,7 +111,14 @@ export default function NewCategoryPage() {
                             options={cloudinaryUploadOptions}
                             onSuccess={(result: CloudinaryUploadWidgetResults) => {
                                 const info = result.info as CloudinaryUploadInfo | undefined;
-                                if (info?.secure_url) setImageUrl(info.secure_url);
+                                const uploadedUrl = getUploadedCloudinaryImageUrl(info);
+
+                                if (!uploadedUrl) {
+                                    alert(`Image must be ${cloudinaryMaxImageSizeLabel} or less.`);
+                                    return;
+                                }
+
+                                setImageUrl(uploadedUrl);
                             }}
                             className="mt-2 px-3 py-2 border rounded-md w-full text-sm"
                         >
