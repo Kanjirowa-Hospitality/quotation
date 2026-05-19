@@ -14,6 +14,7 @@ export type ProductCardItem = {
         name: string
         imageUrl: string | null
         category?: {
+            id?: string
             name: string
         } | null
     }
@@ -27,6 +28,8 @@ export function ProductCard({ item }: { item: ProductCardItem }) {
     const cartItem: CartItem = {
         itemId: item.id,
         productName: item.product.name,
+        categoryId: item.product.category?.id,
+        categoryName: item.product.category?.name,
         price: item.price,
         description: item.description ?? undefined,
         imageUrl: item.product.imageUrl ?? undefined,

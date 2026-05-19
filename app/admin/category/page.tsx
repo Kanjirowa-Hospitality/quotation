@@ -27,6 +27,10 @@ type CategoryItem = {
 
 type CategoryProduct = {
     id: string;
+    category?: {
+        id?: string;
+        name: string;
+    } | null;
 };
 
 type AdminCategory = {
@@ -101,12 +105,18 @@ export default function AdminCategoriesPage() {
         const products: Array<{
             name: string;
             imageUrl: string | null;
+            category?: {
+                id?: string;
+                name: string;
+            } | null;
             items?: CategoryItem[];
         }> = await res.json();
         const categoryCartItems: CartItem[] = products.flatMap((product) =>
             (product.items ?? []).map((item) => ({
                 itemId: item.id,
                 productName: product.name,
+                categoryId: product.category?.id ?? cat.id,
+                categoryName: product.category?.name ?? cat.name,
                 price: item.price,
                 description: item.description ?? undefined,
                 imageUrl: product.imageUrl ?? undefined,
