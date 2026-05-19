@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hashPassword, requireApiSuperAdmin } from "@/lib/auth";
+import { hashPassword, isProtectedSuperAdminEmail, requireApiSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteAdminUserSchema, getValidationError, updateAdminUserSchema } from "@/lib/validation/auth";
 
@@ -99,6 +99,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   if (!user) {
     return NextResponse.json({ error: "User not found." }, { status: 404 });
+  }
+
+  if (isProtectedSuperAdminEmail(user.email)) {
+    return NextResponse.json({ error: "This protected super admin account cannot be deleted." }, { status: 400 });
   }
 
   if (result.data.email !== user.email) {

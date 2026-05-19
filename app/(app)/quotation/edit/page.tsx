@@ -13,6 +13,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import {
     TableBody,
     TableCell,
     TableHead,
@@ -20,9 +27,9 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
-import { useMemo, useState } from 'react'
-import { Check, Download, FileSpreadsheet, FileText, LoaderCircle, Trash2 } from 'lucide-react'
-import { parsePriceInput } from '@/lib/validation/product'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Download, FileSpreadsheet, FileText, LoaderCircle, Percent, Trash2 } from 'lucide-react'
+import { getValidationError, parsePriceInput, quotationExportSchema } from '@/lib/validation/product'
 
 const fields = [
     { id: 'name', label: 'Product name' },
@@ -33,6 +40,7 @@ const fields = [
 
 type FieldId = (typeof fields)[number]['id']
 type ExportFormat = 'excel' | 'word' | 'pdf'
+type DiscountScope = 'all' | 'category'
 type QuotationMeta = {
     quotationDate: string
     customerName: string
@@ -43,6 +51,15 @@ type ExportStatus = {
     format: ExportFormat
     state: 'loading' | 'success' | 'error'
 } | null
+type SaleOptionCategoryLookup = {
+    id: string
+    product?: {
+        category?: {
+            id?: string
+            name: string
+        } | null
+    } | null
+}
 
 const exportFormats: {
     id: ExportFormat
@@ -74,6 +91,29 @@ const exportFormats: {
         },
     ]
 
+function parseDiscountInput(value: string) {
+    const normalized = value.trim()
+
+    if (!normalized) return null
+    if (!/^\d*(?:\.\d{0,2})?$/.test(normalized)) return null
+
+    const discount = Number(normalized)
+
+    return Number.isFinite(discount) && discount >= 0 && discount <= 100 ? discount : null
+}
+
+function discountedPrice(price: number, discountPercent?: number) {
+    const discount = Number(discountPercent ?? 0)
+
+    if (!Number.isFinite(discount) || discount <= 0) return price
+
+    return Math.round(price * (1 - discount / 100) * 100) / 100
+}
+
+function getCategoryKey(item: CartItem) {
+    return item.categoryId ?? item.categoryName ?? ''
+}
+
 export default function EditQuotationPage() {
     const cartItems = useCart((s) => s.items)
     const selectedItems = useCart((s) => s.selectedItems)
@@ -89,15 +129,71 @@ export default function EditQuotationPage() {
         new Set(['name', 'image', 'price', 'description'])
     )
     const [editableItems, setEditableItems] = useState<CartItem[] | null>(null)
+    const [bulkDiscount, setBulkDiscount] = useState('')
+    const [bulkDiscountScope, setBulkDiscountScope] = useState<DiscountScope>('all')
+    const [bulkDiscountCategory, setBulkDiscountCategory] = useState('')
+    const loadedCategoryDetailsRef = useRef(false)
     const [exportStatus, setExportStatus] = useState<ExportStatus>(null)
     const [formatDialogOpen, setFormatDialogOpen] = useState(false)
     const [quotationMeta, setQuotationMeta] = useState<QuotationMeta>({
-        quotationDate: '2083/1/21',
-        customerName: 'Intercontinential Pokhara Resort',
-        customerAddress: 'Begnas Lake, Pachbhaiva- 31, Pokhara',
-        quotationTitle: 'Kible Quotation 2083',
+        quotationDate: '',
+        customerName: '',
+        customerAddress: '',
+        quotationTitle: '',
     })
     const quotationItems = editableItems ?? items
+    const discountCategories = useMemo(() => {
+        const categories = new Map<string, string>()
+
+        for (const item of quotationItems) {
+            const key = getCategoryKey(item)
+            if (key) categories.set(key, item.categoryName ?? 'Unnamed category')
+        }
+
+        return Array.from(categories, ([id, name]) => ({ id, name })).sort((a, b) =>
+            a.name.localeCompare(b.name)
+        )
+    }, [quotationItems])
+    const exportItems = useMemo(
+        () =>
+            quotationItems.map((item) => ({
+                ...item,
+                price: discountedPrice(item.price, item.discountPercent),
+            })),
+        [quotationItems]
+    )
+
+    useEffect(() => {
+        if (loadedCategoryDetailsRef.current || quotationItems.every((item) => getCategoryKey(item))) return
+
+        loadedCategoryDetailsRef.current = true
+        fetch('/api/items')
+            .then((response) => response.json())
+            .then((saleOptions: SaleOptionCategoryLookup[]) => {
+                const categoriesByItemId = new Map(
+                    saleOptions.map((saleOption) => [saleOption.id, saleOption.product?.category])
+                )
+
+                setEditableItems((current) =>
+                    (current ?? items).map((item) => {
+                        if (getCategoryKey(item)) return item
+
+                        const category = categoriesByItemId.get(item.itemId)
+
+                        return category
+                            ? {
+                                ...item,
+                                categoryId: category.id,
+                                categoryName: category.name,
+                            }
+                            : item
+                    })
+                )
+            })
+            .catch(() => {
+                loadedCategoryDetailsRef.current = false
+            })
+    }, [items, quotationItems])
 
     const toggle = (id: FieldId) => {
         const s = new Set(selected)
@@ -123,18 +219,56 @@ export default function EditQuotationPage() {
         )
     }
 
+    const applyBulkDiscount = () => {
+        const discount = parseDiscountInput(bulkDiscount)
+        if (discount === null) return
+        if (bulkDiscountScope === 'category' && !bulkDiscountCategory) return
+
+        setEditableItems((current) =>
+            (current ?? items).map((item) => {
+                const shouldApply =
+                    bulkDiscountScope === 'all' || getCategoryKey(item) === bulkDiscountCategory
+
+                return shouldApply
+                    ? {
+                        ...item,
+                        discountPercent: discount,
+                    }
+                    : item
+            })
+        )
+    }
+
+    const clearDiscounts = () => {
+        setBulkDiscount('')
+        setEditableItems((current) =>
+            (current ?? items).map((item) => ({
+                ...item,
+                discountPercent: 0,
+            }))
+        )
+    }
+
     const exportFile = async (format: ExportFormat) => {
+        const payload = {
+            items: exportItems,
+            fields: Array.from(selected),
+            format,
+            meta: quotationMeta,
+        }
+        const validation = quotationExportSchema.safeParse(payload)
+
+        if (!validation.success) {
+            alert(getValidationError(validation.error))
+            return
+        }
+
         setExportStatus({ format, state: 'loading' })
 
         try {
             const res = await fetch('/api/quotation/export', {
                 method: 'POST',
-                body: JSON.stringify({
-                    items: quotationItems,
-                    fields: Array.from(selected),
-                    format,
-                    meta: quotationMeta,
-                }),
+                body: JSON.stringify(validation.data),
                 headers: { 'Content-Type': 'application/json' },
             })
             if (!res.ok) {
@@ -207,8 +341,76 @@ export default function EditQuotationPage() {
                         <div className="min-w-0">
                             <h3 className="font-medium">Quotation items</h3>
                             <p className="text-sm text-muted-foreground">
-                                Edit names, image URLs, descriptions, and prices before exporting.
+                                Edit names, image URLs, descriptions, prices, and discounts before exporting.
                             </p>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <Select
+                                value={bulkDiscountScope}
+                                onValueChange={(value) => setBulkDiscountScope(value as DiscountScope)}
+                            >
+                                <SelectTrigger
+                                    aria-label="Discount apply option"
+                                    className="h-8 w-full sm:w-36"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All products</SelectItem>
+                                    <SelectItem value="category">By category</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {bulkDiscountScope === 'category' && (
+                                <Select
+                                    value={bulkDiscountCategory}
+                                    onValueChange={setBulkDiscountCategory}
+                                    disabled={discountCategories.length === 0}
+                                >
+                                    <SelectTrigger
+                                        aria-label="Discount category"
+                                        className="h-8 w-full sm:w-44"
+                                    >
+                                        <SelectValue placeholder="Select category" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {discountCategories.map((category) => (
+                                            <SelectItem key={category.id} value={category.id}>
+                                                {category.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                            <div className="relative">
+                                <Percent className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    aria-label="Discount percentage for all products"
+                                    inputMode="decimal"
+                                    value={bulkDiscount}
+                                    onChange={(event) => setBulkDiscount(event.target.value)}
+                                    placeholder="Discount %"
+                                    className="h-8 w-full pl-7 sm:w-32"
+                                />
+                            </div>
+                            <Button
+                                variant="outline"
+                                className="w-full sm:w-auto"
+                                onClick={applyBulkDiscount}
+                                disabled={
+                                    parseDiscountInput(bulkDiscount) === null ||
+                                    (bulkDiscountScope === 'category' && !bulkDiscountCategory)
+                                }
+                            >
+                                {bulkDiscountScope === 'category' ? 'Apply to category' : 'Apply to all'}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                className="w-full sm:w-auto"
+                                onClick={clearDiscounts}
+                                disabled={quotationItems.length === 0}
+                            >
+                                Clear discounts
+                            </Button>
                         </div>
                         <Dialog open={formatDialogOpen} onOpenChange={setFormatDialogOpen}>
                             <DialogTrigger asChild>
@@ -340,21 +542,27 @@ export default function EditQuotationPage() {
                     </div>
                 ) : (
                     <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-background">
-                        <table className="min-w-[980px] w-full caption-bottom text-xs">
+                        <table className="min-w-[1160px] w-full caption-bottom text-xs">
                             <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-background [&_th]:shadow-[inset_0_-1px_0_0_var(--border)]">
                                 <TableRow>
                                     <TableHead className="w-16">Image</TableHead>
                                     <TableHead className="min-w-56">Product name</TableHead>
                                     <TableHead className="min-w-72">Description</TableHead>
-                                    <TableHead className="w-32">Price</TableHead>
+                                    <TableHead className="w-32">Base price</TableHead>
+                                    <TableHead className="w-28">Discount</TableHead>
+                                    <TableHead className="w-32">Final price</TableHead>
                                     <TableHead className="min-w-64">Image URL</TableHead>
                                     <TableHead className="w-16 text-right">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {quotationItems.map((item) => (
+                                {quotationItems.map((item) => {
+                                    const finalPrice = discountedPrice(item.price, item.discountPercent)
+
+                                    return (
                                     <TableRow key={item.itemId}>
                                         <TableCell>
+                                            {/* eslint-disable-next-line @next/next/no-img-element -- Product previews can be local placeholders or remote catalog URLs. */}
                                             <img
                                                 src={item.imageUrl || '/placeholder.svg'}
                                                 alt={item.productName}
@@ -382,7 +590,7 @@ export default function EditQuotationPage() {
                                         </TableCell>
                                         <TableCell>
                                             <Input
-                                                aria-label="Price"
+                                                aria-label="Base price"
                                                 type="number"
                                                 inputMode="decimal"
                                                 min={0}
@@ -395,6 +603,32 @@ export default function EditQuotationPage() {
                                                     })
                                                 }}
                                             />
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="relative">
+                                                <Input
+                                                    aria-label="Discount percentage"
+                                                    inputMode="decimal"
+                                                    value={item.discountPercent ?? ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value.trim()
+                                                        const discount = parseDiscountInput(value)
+
+                                                        if (value && discount === null) return
+
+                                                        updateItem(item.itemId, {
+                                                            discountPercent: discount ?? undefined,
+                                                        })
+                                                    }}
+                                                    className="pr-6"
+                                                />
+                                                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                                    %
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="font-semibold">
+                                            Rs. {finalPrice}
                                         </TableCell>
                                         <TableCell>
                                             <Input
@@ -417,7 +651,8 @@ export default function EditQuotationPage() {
                                             </Button>
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                    )
+                                })}
                             </TableBody>
                         </table>
                     </div>

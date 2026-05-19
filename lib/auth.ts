@@ -16,6 +16,16 @@ export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 const SESSION_DAYS = 30;
 const PASSWORD_KEY_LENGTH = 64;
 
+export function getProtectedSuperAdminEmail() {
+  return process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase() || null;
+}
+
+export function isProtectedSuperAdminEmail(email: string) {
+  const protectedEmail = getProtectedSuperAdminEmail();
+
+  return !!protectedEmail && email.trim().toLowerCase() === protectedEmail;
+}
+
 function getAuthSecret() {
   const secret = process.env.AUTH_SECRET;
 

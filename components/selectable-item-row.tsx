@@ -14,6 +14,10 @@ type SelectableItemRowProps = {
     product: {
         name: string
         imageUrl: string | null
+        category?: {
+            id?: string
+            name: string
+        } | null
     }
 }
 
@@ -25,6 +29,8 @@ export function SelectableItemRow({ item, product }: SelectableItemRowProps) {
     const cartItem: CartItem = {
         itemId: item.id,
         productName: product.name,
+        categoryId: product.category?.id,
+        categoryName: product.category?.name,
         price: item.price,
         description: item.description ?? undefined,
         imageUrl: product.imageUrl ?? undefined,

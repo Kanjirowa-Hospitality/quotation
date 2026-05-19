@@ -39,10 +39,10 @@ type ExportItem = {
     attributes?: Record<string, unknown> | null
 }
 type QuotationMeta = {
-    quotationDate?: string
-    customerName?: string
-    customerAddress?: string
-    quotationTitle?: string
+    quotationDate: string
+    customerName: string
+    customerAddress: string
+    quotationTitle: string
 }
 type ExportImage = {
     data: ArrayBuffer
@@ -601,12 +601,12 @@ export async function POST(req: NextRequest) {
         items: ExportItem[]
         fields: ExportField[]
         format: ExportFormat
-        meta?: QuotationMeta
+        meta: QuotationMeta
     } = result.data
-    const quotationDate = meta?.quotationDate?.trim() || '2083/1/21'
-    const customerName = meta?.customerName?.trim() || 'Intercontinential Pokhara Resort'
-    const customerAddress = meta?.customerAddress?.trim() || 'Begnas Lake, Pachbhaiva- 31, Pokhara'
-    const quotationTitle = meta?.quotationTitle?.trim() || 'Kible Quotation 2083'
+    const quotationDate = meta.quotationDate.trim()
+    const customerName = meta.customerName.trim()
+    const customerAddress = meta.customerAddress.trim()
+    const quotationTitle = meta.quotationTitle.trim()
 
     const excelHeaders = ['S.N', 'Product', 'Description', 'Unit', 'Price']
     const excelRows: Record<string, string | number>[] = items.map((item, index) => ({

@@ -21,6 +21,9 @@ const optionalTextSchema = z
   .nullable()
   .transform((value) => value || null);
 
+const requiredTextSchema = (fieldName: string) =>
+  z.string().trim().min(1, `${fieldName} is required.`);
+
 const saleOptionSchema = z.object({
   unit: optionalTextSchema.transform((value) => value || "unit"),
   quantity: optionalTextSchema,
@@ -61,14 +64,12 @@ export const quotationExportSchema = z.object({
   ),
   fields: z.array(z.enum(["name", "image", "description", "price"])),
   format: z.enum(["excel", "word", "pdf"]),
-  meta: z
-    .object({
-      quotationDate: z.string().optional(),
-      customerName: z.string().optional(),
-      customerAddress: z.string().optional(),
-      quotationTitle: z.string().optional(),
-    })
-    .optional(),
+  meta: z.object({
+    quotationDate: requiredTextSchema("Date"),
+    customerName: requiredTextSchema("Hotel / customer name"),
+    customerAddress: requiredTextSchema("Hotel / customer address"),
+    quotationTitle: requiredTextSchema("Quotation for"),
+  }),
 });
 
 export function isValidPriceInput(value: string) {

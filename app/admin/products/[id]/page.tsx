@@ -5,7 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { CldUploadButton, type CloudinaryUploadWidgetResults } from "next-cloudinary";
 import { LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { Button, LoadingButton } from "@/components/ui/button";
-import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
+import {
+    cloudinaryMaxImageSizeLabel,
+    cloudinaryUploadOptions,
+    cloudinaryUploadPreset,
+    getUploadedCloudinaryImageUrl,
+    type CloudinaryUploadInfo,
+} from "@/lib/cloudinary";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getValidationError, isValidPriceInput, productPayloadSchema } from "@/lib/validation/product";
@@ -49,10 +55,6 @@ type ProductResponse = {
             price?: number | null;
         }[];
     }[];
-};
-
-type CloudinaryUploadInfo = {
-    secure_url?: string;
 };
 
 function attributesToArray(attributes: Record<string, unknown> | null | undefined): Attribute[] {
@@ -259,7 +261,14 @@ export default function EditProductPage() {
                             options={cloudinaryUploadOptions}
                             onSuccess={(res: CloudinaryUploadWidgetResults) => {
                                 const info = res.info as CloudinaryUploadInfo | undefined;
-                                if (info?.secure_url) setImageUrl(info.secure_url);
+                                const uploadedUrl = getUploadedCloudinaryImageUrl(info);
+
+                                if (!uploadedUrl) {
+                                    alert(`Image must be ${cloudinaryMaxImageSizeLabel} or less.`);
+                                    return;
+                                }
+
+                                setImageUrl(uploadedUrl);
                             }}
                             className="mt-2 w-full rounded-md border px-3 py-2"
                         >

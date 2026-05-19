@@ -4,7 +4,10 @@ import { persist } from 'zustand/middleware'
 export type CartItem = {
     itemId: string
     productName: string
+    categoryId?: string
+    categoryName?: string
     price: number
+    discountPercent?: number
     description?: string
     imageUrl?: string
     attributes?: Record<string, unknown> | null

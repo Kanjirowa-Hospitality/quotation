@@ -7,7 +7,13 @@ import type { CloudinaryUploadWidgetResults } from "next-cloudinary";
 import { CldUploadButton } from "next-cloudinary";
 import { Plus, Trash2 } from "lucide-react";
 import { Button, LoadingButton } from "@/components/ui/button";
-import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
+import {
+    cloudinaryMaxImageSizeLabel,
+    cloudinaryUploadOptions,
+    cloudinaryUploadPreset,
+    getUploadedCloudinaryImageUrl,
+    type CloudinaryUploadInfo,
+} from "@/lib/cloudinary";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getValidationError, isValidPriceInput, productPayloadSchema } from "@/lib/validation/product";
@@ -41,10 +47,6 @@ type Variant = {
     color: string;
     attributes: Attribute[];
     saleOptions: SaleOption[];
-};
-
-type CloudinaryUploadInfo = {
-    secure_url?: string;
 };
 
 const emptySaleOption = (): SaleOption => ({
@@ -191,7 +193,14 @@ export default function NewProductPage() {
 
     const onUploadSuccess = (res: CloudinaryUploadWidgetResults) => {
         const info = res.info as CloudinaryUploadInfo | undefined;
-        if (info?.secure_url) setImageUrl(info.secure_url);
+        const uploadedUrl = getUploadedCloudinaryImageUrl(info);
+
+        if (!uploadedUrl) {
+            alert(`Image must be ${cloudinaryMaxImageSizeLabel} or less.`);
+            return;
+        }
+
+        setImageUrl(uploadedUrl);
     };
 
     return (

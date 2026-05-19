@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,19 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cloudinaryUploadOptions, cloudinaryUploadPreset } from "@/lib/cloudinary";
-import { CldUploadButton } from "next-cloudinary";
+import {
+    cloudinaryMaxImageSizeLabel,
+    cloudinaryUploadOptions,
+    cloudinaryUploadPreset,
+    getUploadedCloudinaryImageUrl,
+    type CloudinaryUploadInfo,
+} from "@/lib/cloudinary";
+import { CldUploadButton, type CloudinaryUploadWidgetResults } from "next-cloudinary";
+
+type Category = {
+    id: string;
+    name: string;
+};
 
 export default function NewItemsPage() {
     const router = useRouter();
@@ -24,7 +35,7 @@ export default function NewItemsPage() {
     const [imageUrl, setImageUrl] = useState("");
 
     // Fetch categories
-    const { data: categories } = useQuery<any[]>({
+    const { data: categories } = useQuery<Category[]>({
         queryKey: ["categories"],
         queryFn: () => fetch("/api/categories").then((r) => r.json()),
     });
@@ -118,8 +129,16 @@ export default function NewItemsPage() {
                         <CldUploadButton
                             uploadPreset={cloudinaryUploadPreset}
                             options={cloudinaryUploadOptions}
-                            onSuccess={(result: any) => {
-                                setImageUrl(result.info.secure_url);
+                            onSuccess={(result: CloudinaryUploadWidgetResults) => {
+                                const info = result.info as CloudinaryUploadInfo | undefined;
+                                const uploadedUrl = getUploadedCloudinaryImageUrl(info);
+
+                                if (!uploadedUrl) {
+                                    alert(`Image must be ${cloudinaryMaxImageSizeLabel} or less.`);
+                                    return;
+                                }
+
+                                setImageUrl(uploadedUrl);
                             }}
                             className="mt-2 px-3 py-2 border rounded-md w-full text-sm"
                         >
@@ -129,6 +148,7 @@ export default function NewItemsPage() {
                         {imageUrl && (
                             <img
                                 src={imageUrl}
+                                alt={name || "Product image"}
                                 className="h-28 w-full object-cover rounded-md mt-3 border"
                             />
                         )}
