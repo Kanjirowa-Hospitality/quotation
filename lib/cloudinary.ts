@@ -8,6 +8,8 @@ export const cloudinaryUploadFolder =
 
 export const cloudinaryMaxImageSizeBytes = 2 * 1024 * 1024;
 export const cloudinaryMaxImageSizeLabel = "2 MB";
+export const cloudinaryMaxFileSizeBytes = 15 * 1024 * 1024;
+export const cloudinaryMaxFileSizeLabel = "15 MB";
 
 export const cloudinaryUploadOptions: CloudinaryUploadWidgetOptions = {
     folder: cloudinaryUploadFolder,
@@ -18,9 +20,21 @@ export const cloudinaryUploadOptions: CloudinaryUploadWidgetOptions = {
     maxImageFileSize: cloudinaryMaxImageSizeBytes,
 };
 
+export const cloudinaryFileUploadOptions: CloudinaryUploadWidgetOptions = {
+    folder: `${cloudinaryUploadFolder}/quotation-files`,
+    multiple: false,
+    resourceType: "auto",
+    clientAllowedFormats: ["pdf", "doc", "docx", "xls", "xlsx", "csv", "jpg", "jpeg", "png", "webp"],
+    maxFileSize: cloudinaryMaxFileSizeBytes,
+};
+
 export type CloudinaryUploadInfo = {
     secure_url?: string;
     bytes?: number;
+    public_id?: string;
+    resource_type?: string;
+    original_filename?: string;
+    format?: string;
 };
 
 export function getOptimizedCloudinaryImageUrl(url: string) {
@@ -36,4 +50,11 @@ export function getUploadedCloudinaryImageUrl(info: CloudinaryUploadInfo | undef
     if (info.bytes && info.bytes > cloudinaryMaxImageSizeBytes) return "";
 
     return getOptimizedCloudinaryImageUrl(info.secure_url);
+}
+
+export function getUploadedCloudinaryFileUrl(info: CloudinaryUploadInfo | undefined) {
+    if (!info?.secure_url) return "";
+    if (info.bytes && info.bytes > cloudinaryMaxFileSizeBytes) return "";
+
+    return info.secure_url;
 }

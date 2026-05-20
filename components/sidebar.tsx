@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import {
     ChevronLeft,
     ChevronRight,
+    FileText,
     Folder,
     LayoutDashboard,
     Package,
@@ -151,6 +152,14 @@ export function Sidebar({
                         icon={<Folder size={18} />}
                         label="Categories"
                         active={pathname.startsWith("/admin/category")}
+                        collapsed={isCollapsed}
+                    />
+
+                    <SidebarLink
+                        href="/admin/quotation-files"
+                        icon={<FileText size={18} />}
+                        label="Quotation Files"
+                        active={pathname.startsWith("/admin/quotation-files")}
                         collapsed={isCollapsed}
                     />
 
