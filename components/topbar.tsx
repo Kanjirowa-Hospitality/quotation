@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/store/cart'
 import { ArrowLeft, Check, LogOut, Menu, MousePointer2, ShoppingCart, X } from 'lucide-react'
@@ -51,11 +50,7 @@ export function TopBar({ user }: { user: TopBarUser }) {
                         <Sidebar className="h-full w-full border-r-0" showCollapse={false} user={user} />
                     </SheetContent>
                 </Sheet>
-                <Link href="/" className="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-accent">
-                    {/* eslint-disable-next-line @next/next/no-img-element -- Header uses the existing small logo asset. */}
-                    <img src="/main-logo.png" alt="Kanjirowa" className="h-9 shrink-0" />
-                    <span className="truncate text-base font-semibold sm:text-lg">Kanjirowa</span>
-                </Link>
+                <h1 className="truncate text-base font-semibold sm:text-lg">Dashboard</h1>
             </div>
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 {isSelecting ? (

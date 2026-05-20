@@ -40,6 +40,9 @@ function getPayload(body: Record<string, unknown>) {
 }
 
 export async function GET(req: Request) {
+    const auth = await requireApiAdmin();
+    if (auth.response) return auth.response;
+
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type")?.trim();
     const where = type && quotationFileTypes.has(type) ? { type: type as QuotationFileType } : {};

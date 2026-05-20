@@ -23,6 +23,9 @@ export async function GET(
     req: Request,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireApiAdmin();
+    if (auth.response) return auth.response;
+
     const { id } = await context.params;
 
     const product = await prisma.product.findUnique({

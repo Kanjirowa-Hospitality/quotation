@@ -21,6 +21,9 @@ type ProductVariantInput = {
 
 // ✅ GET ALL PRODUCTS
 export async function GET(req: Request) {
+    const auth = await requireApiAdmin();
+    if (auth.response) return auth.response;
+
     const { searchParams } = new URL(req.url);
     const categoryId = searchParams.get("categoryId");
     const search = searchParams.get("search")?.trim() || "";

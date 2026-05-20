@@ -5,6 +5,9 @@ import { withFlattenedItems } from '@/lib/product-response'
 import type { Prisma } from '@/app/generated/prisma/client'
 
 export async function GET(req: Request) {
+    const auth = await requireApiAdmin()
+    if (auth.response) return auth.response
+
     const { searchParams } = new URL(req.url)
     const search = searchParams.get('search')?.trim() || ''
     const pageParam = searchParams.get('page')
