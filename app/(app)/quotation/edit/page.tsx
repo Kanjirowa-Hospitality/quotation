@@ -47,6 +47,7 @@ type QuotationMeta = {
     customerAddress: string
     quotationTitle: string
 }
+type QuotationMetaField = keyof QuotationMeta
 type ExportStatus = {
     format: ExportFormat
     state: 'loading' | 'success' | 'error'
@@ -60,6 +61,7 @@ type SaleOptionCategoryLookup = {
         } | null
     } | null
 }
+type QuotationMetaErrors = Partial<Record<QuotationMetaField, string>>
 
 const exportFormats: {
     id: ExportFormat
@@ -134,6 +136,8 @@ export default function EditQuotationPage() {
     const [bulkDiscountCategory, setBulkDiscountCategory] = useState('')
     const loadedCategoryDetailsRef = useRef(false)
     const [exportStatus, setExportStatus] = useState<ExportStatus>(null)
+    const [exportError, setExportError] = useState('')
+    const [quotationMetaErrors, setQuotationMetaErrors] = useState<QuotationMetaErrors>({})
     const [formatDialogOpen, setFormatDialogOpen] = useState(false)
     const [quotationMeta, setQuotationMeta] = useState<QuotationMeta>({
         quotationDate: '',
@@ -250,6 +254,9 @@ export default function EditQuotationPage() {
     }
 
     const exportFile = async (format: ExportFormat) => {
+        setExportError('')
+        setQuotationMetaErrors({})
+
         const payload = {
             items: exportItems,
             fields: Array.from(selected),
@@ -259,7 +266,23 @@ export default function EditQuotationPage() {
         const validation = quotationExportSchema.safeParse(payload)
 
         if (!validation.success) {
-            alert(getValidationError(validation.error))
+            const fieldErrors: QuotationMetaErrors = {}
+
+            for (const issue of validation.error.issues) {
+                const [, field] = issue.path
+
+                if (
+                    typeof field === 'string' &&
+                    ['quotationDate', 'customerName', 'customerAddress', 'quotationTitle'].includes(field)
+                ) {
+                    fieldErrors[field as QuotationMetaField] = issue.message
+                }
+            }
+
+            setQuotationMetaErrors(fieldErrors)
+            if (Object.keys(fieldErrors).length === 0) {
+                setExportError(getValidationError(validation.error))
+            }
             return
         }
 
@@ -296,8 +319,23 @@ export default function EditQuotationPage() {
                     current?.format === format && current.state === 'error' ? null : current
                 )
             }, 2400)
-            alert(error instanceof Error ? error.message : 'Failed to generate quotation')
+            setExportError(error instanceof Error ? error.message : 'Failed to generate quotation')
         }
+    }
+
+    const updateQuotationMeta = (field: QuotationMetaField, value: string) => {
+        setQuotationMeta((current) => ({
+            ...current,
+            [field]: value,
+        }))
+        setQuotationMetaErrors((current) => {
+            if (!current[field]) return current
+
+            const next = { ...current }
+            delete next[field]
+            return next
+        })
+        setExportError('')
     }
 
     return (
@@ -433,56 +471,53 @@ export default function EditQuotationPage() {
                                     <Input
                                         id="quotation-date"
                                         value={quotationMeta.quotationDate}
-                                        onChange={(e) =>
-                                            setQuotationMeta((current) => ({
-                                                ...current,
-                                                quotationDate: e.target.value,
-                                            }))
-                                        }
+                                        aria-invalid={!!quotationMetaErrors.quotationDate}
+                                        onChange={(e) => updateQuotationMeta('quotationDate', e.target.value)}
                                     />
+                                    {quotationMetaErrors.quotationDate && (
+                                        <p className="text-sm text-destructive">{quotationMetaErrors.quotationDate}</p>
+                                    )}
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label htmlFor="quotation-title">Quotation for</Label>
                                     <Input
                                         id="quotation-title"
                                         value={quotationMeta.quotationTitle}
-                                        onChange={(e) =>
-                                            setQuotationMeta((current) => ({
-                                                ...current,
-                                                quotationTitle: e.target.value,
-                                            }))
-                                        }
+                                        aria-invalid={!!quotationMetaErrors.quotationTitle}
+                                        onChange={(e) => updateQuotationMeta('quotationTitle', e.target.value)}
                                     />
+                                    {quotationMetaErrors.quotationTitle && (
+                                        <p className="text-sm text-destructive">{quotationMetaErrors.quotationTitle}</p>
+                                    )}
                                 </div>
                                 <div className="space-y-1.5 sm:col-span-2">
                                     <Label htmlFor="customer-name">Hotel / customer name</Label>
                                     <Input
                                         id="customer-name"
                                         value={quotationMeta.customerName}
-                                        onChange={(e) =>
-                                            setQuotationMeta((current) => ({
-                                                ...current,
-                                                customerName: e.target.value,
-                                            }))
-                                        }
+                                        aria-invalid={!!quotationMetaErrors.customerName}
+                                        onChange={(e) => updateQuotationMeta('customerName', e.target.value)}
                                     />
+                                    {quotationMetaErrors.customerName && (
+                                        <p className="text-sm text-destructive">{quotationMetaErrors.customerName}</p>
+                                    )}
                                 </div>
                                 <div className="space-y-1.5 sm:col-span-2">
                                     <Label htmlFor="customer-address">Hotel / customer address</Label>
                                     <Input
                                         id="customer-address"
                                         value={quotationMeta.customerAddress}
-                                        onChange={(e) =>
-                                            setQuotationMeta((current) => ({
-                                                ...current,
-                                                customerAddress: e.target.value,
-                                            }))
-                                        }
+                                        aria-invalid={!!quotationMetaErrors.customerAddress}
+                                        onChange={(e) => updateQuotationMeta('customerAddress', e.target.value)}
                                     />
+                                    {quotationMetaErrors.customerAddress && (
+                                        <p className="text-sm text-destructive">{quotationMetaErrors.customerAddress}</p>
+                                    )}
                                 </div>
                             </div>
 
                             <div className="space-y-2">
+                                {exportError && <p className="text-sm text-destructive">{exportError}</p>}
                                 {exportFormats.map((format) => {
                                     const Icon = format.icon
                                     const status =

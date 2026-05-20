@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SearchBar } from "@/components/search-bar";
@@ -74,6 +74,7 @@ export default function AdminCategoriesPage() {
 
             return fetch(`/api/categories?${params.toString()}`).then((r) => r.json());
         },
+        placeholderData: keepPreviousData,
     });
 
     const deleteMutation = useMutation({

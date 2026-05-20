@@ -6,6 +6,9 @@ export async function GET(
     req: Request,
     context: { params: Promise<{ id: string }> }
 ) {
+    const auth = await requireApiAdmin();
+    if (auth.response) return auth.response;
+
     const { id } = await context.params;
 
     const category = await prisma.category.findUnique({

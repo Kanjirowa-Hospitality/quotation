@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import {
     ChevronLeft,
     ChevronRight,
+    FileText,
     Folder,
     LayoutDashboard,
     Package,
@@ -73,23 +74,33 @@ export function Sidebar({
                 isCollapsed ? "w-16" : "w-64",
                 className
             )}
-        >
-            {/* LOGO */}
-            <div
-                className={cn(
-                    "relative px-4 py-4 flex h-[73px] items-center gap-3 border-b",
-                    isCollapsed && "justify-center px-2"
-                )}
             >
-                <img src="/main-logo.png" alt="Kanjirow" className="h-10 shrink-0" />
-                <span
+                {/* LOGO */}
+                <div
                     className={cn(
-                        "min-w-0 flex-1 truncate font-semibold text-lg tracking-wide transition-opacity",
-                        isCollapsed && "hidden"
+                    "relative px-4 py-4 flex h-[73px] items-center gap-3 border-b",
+                        isCollapsed && "justify-center px-2"
                     )}
                 >
-                    Kanjirowa
-                </span>
+                    <Link
+                        href="/"
+                        className={cn(
+                            "flex min-w-0 flex-1 items-center gap-3 rounded-md hover:bg-accent",
+                            isCollapsed && "justify-center"
+                        )}
+                        title="Go to dashboard"
+                    >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- Sidebar uses the existing small logo asset. */}
+                        <img src="/main-logo.png" alt="Kanjirowa" className="h-10 shrink-0" />
+                        <span
+                            className={cn(
+                                "min-w-0 flex-1 truncate font-semibold text-lg tracking-wide transition-opacity",
+                                isCollapsed && "hidden"
+                            )}
+                        >
+                            Kanjirowa
+                        </span>
+                    </Link>
                 {showCollapse && (
                     <Button
                         type="button"
@@ -151,6 +162,14 @@ export function Sidebar({
                         icon={<Folder size={18} />}
                         label="Categories"
                         active={pathname.startsWith("/admin/category")}
+                        collapsed={isCollapsed}
+                    />
+
+                    <SidebarLink
+                        href="/admin/quotation-files"
+                        icon={<FileText size={18} />}
+                        label="Quotation Files"
+                        active={pathname.startsWith("/admin/quotation-files")}
                         collapsed={isCollapsed}
                     />
 

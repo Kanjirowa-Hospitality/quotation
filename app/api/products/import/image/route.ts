@@ -1,8 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiSuperAdmin } from "@/lib/auth";
 import { getImportImageContentType, getProductImportImagePath } from "@/lib/product-import";
 
 export async function GET(req: NextRequest) {
+    const auth = await requireApiSuperAdmin();
+    if (auth.response) return auth.response;
+
     const sessionId = req.nextUrl.searchParams.get("sessionId") ?? "";
     const fileName = req.nextUrl.searchParams.get("file") ?? "";
 

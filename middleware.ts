@@ -3,6 +3,7 @@ import { AUTH_COOKIE_NAME, isSignedAuthCookie } from "@/lib/auth-cookie";
 
 const PUBLIC_PATHS = ["/signin"];
 const PUBLIC_AUTH_API_PATHS = ["/api/auth/signin", "/api/auth/signout", "/api/auth/password-reset"];
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 function withSecurityHeaders(response: NextResponse) {
   response.headers.set("X-Content-Type-Options", "nosniff");
@@ -27,9 +28,30 @@ function isPublicPath(pathname: string) {
   );
 }
 
+function getForwardedHost(req: NextRequest) {
+  return req.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || req.headers.get("host")?.trim() || "";
+}
+
+function getForwardedProtocol(req: NextRequest) {
+  return req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || req.nextUrl.protocol.replace(":", "");
+}
+
+function isSameOriginApiMutation(req: NextRequest) {
+  if (!req.nextUrl.pathname.startsWith("/api/") || SAFE_METHODS.has(req.method)) return true;
+
+  const origin = req.headers.get("origin");
+  if (!origin) return true;
+
+  return origin === `${getForwardedProtocol(req)}://${getForwardedHost(req)}`;
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isAuthenticated = await isSignedAuthCookie(req.cookies.get(AUTH_COOKIE_NAME)?.value);
+
+  if (!isSameOriginApiMutation(req)) {
+    return withSecurityHeaders(NextResponse.json({ error: "Invalid request origin." }, { status: 403 }));
+  }
 
   if (isAuthenticated && PUBLIC_PATHS.includes(pathname)) {
     return withSecurityHeaders(NextResponse.redirect(new URL("/", req.url)));

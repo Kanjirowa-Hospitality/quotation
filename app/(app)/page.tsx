@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -16,6 +16,7 @@ import {
 import { PaginationControls, PaginationMeta } from '@/components/pagination-controls'
 import { CartItem, useCart } from '@/lib/store/cart'
 import { Check, Plus } from 'lucide-react'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 type ProductTableItem = {
   id: string
@@ -42,17 +43,19 @@ const PAGE_SIZE = 25
 export default function Page() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const debouncedSearch = useDebouncedValue(search)
   const add = useCart((s) => s.add)
   const isSelecting = useCart((s) => s.isSelecting)
   const selectedItems = useCart((s) => s.selectedItems)
   const toggleSelection = useCart((s) => s.toggleSelection)
 
-  const { data, isLoading } = useQuery<PaginatedItems>({
-    queryKey: ['items', search, page],
+  const { data, isLoading, isFetching } = useQuery<PaginatedItems>({
+    queryKey: ['items', debouncedSearch, page],
     queryFn: () =>
       fetch(
-        `/api/items?search=${encodeURIComponent(search)}&page=${page}&pageSize=${PAGE_SIZE}`
+        `/api/items?search=${encodeURIComponent(debouncedSearch)}&page=${page}&pageSize=${PAGE_SIZE}`
       ).then((r) => r.json()),
+    placeholderData: keepPreviousData,
   })
 
   return (
@@ -66,6 +69,11 @@ export default function Page() {
             setPage(1)
           }}
         />
+        {isFetching && !isLoading && (
+          <span className="self-center whitespace-nowrap text-sm text-muted-foreground">
+            Searching...
+          </span>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-md border bg-background">

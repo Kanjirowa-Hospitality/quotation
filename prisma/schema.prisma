@@ -17,6 +17,14 @@ enum UserRole {
   SUPER_ADMIN
 }
 
+enum QuotationFileType {
+  LINNEN
+  AMMENITIES
+  DIVERSY
+  ECOGENIS
+  KHARCHER
+}
+
 model Category {
   id          String   @id @default(cuid())
   name        String
@@ -26,6 +34,9 @@ model Category {
   createdAt   DateTime @default(now())
 
   products Product[]
+
+  @@index([name])
+  @@index([createdAt])
 }
 
 model Product {
@@ -40,6 +51,10 @@ model Product {
   updatedAt DateTime @default(now())
 
   variants ProductVariant[]
+
+  @@index([categoryId])
+  @@index([name])
+  @@index([createdAt])
 }
 
 model ProductVariant {
@@ -57,6 +72,9 @@ model ProductVariant {
   updatedAt DateTime @default(now())
 
   saleOptions SaleOption[]
+
+  @@index([productId])
+  @@index([createdAt])
 }
 
 model SaleOption {
@@ -71,6 +89,9 @@ model SaleOption {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
+
+  @@index([variantId])
+  @@index([createdAt])
 }
 
 model User {
@@ -82,7 +103,7 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now())
 
-  sessions Session[]
+  sessions           Session[]
   passwordResetCodes PasswordResetCode[]
 }
 
@@ -109,4 +130,20 @@ model PasswordResetCode {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model QuotationFile {
+  id                 String            @id @default(cuid())
+  type               QuotationFileType
+  title              String
+  fileUrl            String
+  cloudinaryPublicId String?
+  cloudinaryResource String?
+  originalFilename   String?
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([type])
+  @@index([createdAt])
 }

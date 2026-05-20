@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/store/cart'
-import { Check, LogOut, Menu, MousePointer2, ShoppingCart, X } from 'lucide-react'
+import { ArrowLeft, Check, LogOut, Menu, MousePointer2, ShoppingCart, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { CartSheet } from '@/components/cart-sheet'
@@ -37,6 +37,9 @@ export function TopBar({ user }: { user: TopBarUser }) {
     return (
         <header className="flex min-h-16 flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-3 sm:px-4 lg:px-6">
             <div className="flex min-w-0 items-center gap-2">
+                <Button variant="outline" size="icon" onClick={() => router.back()} aria-label="Go back" title="Go back">
+                    <ArrowLeft className="h-5 w-5" />
+                </Button>
                 <Sheet>
                     <SheetTrigger asChild>
                         <Button variant="outline" size="icon" className="md:hidden" aria-label="Open navigation">
