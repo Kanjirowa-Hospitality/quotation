@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -116,6 +116,7 @@ export default function AdminProductsPage() {
 
             return fetch(`/api/products?${params.toString()}`).then((r) => r.json());
         },
+        placeholderData: keepPreviousData,
     });
 
     const deleteMutation = useMutation({

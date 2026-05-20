@@ -1,8 +1,9 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/store/cart'
-import { Check, LogOut, Menu, MousePointer2, ShoppingCart, X } from 'lucide-react'
+import { ArrowLeft, Check, LogOut, Menu, MousePointer2, ShoppingCart, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { CartSheet } from '@/components/cart-sheet'
@@ -37,6 +38,9 @@ export function TopBar({ user }: { user: TopBarUser }) {
     return (
         <header className="flex min-h-16 flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-3 sm:px-4 lg:px-6">
             <div className="flex min-w-0 items-center gap-2">
+                <Button variant="outline" size="icon" onClick={() => router.back()} aria-label="Go back" title="Go back">
+                    <ArrowLeft className="h-5 w-5" />
+                </Button>
                 <Sheet>
                     <SheetTrigger asChild>
                         <Button variant="outline" size="icon" className="md:hidden" aria-label="Open navigation">
@@ -47,7 +51,11 @@ export function TopBar({ user }: { user: TopBarUser }) {
                         <Sidebar className="h-full w-full border-r-0" showCollapse={false} user={user} />
                     </SheetContent>
                 </Sheet>
-                <h1 className="truncate text-base font-semibold sm:text-lg">Dashboard</h1>
+                <Link href="/" className="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 hover:bg-accent">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- Header uses the existing small logo asset. */}
+                    <img src="/main-logo.png" alt="Kanjirowa" className="h-9 shrink-0" />
+                    <span className="truncate text-base font-semibold sm:text-lg">Kanjirowa</span>
+                </Link>
             </div>
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 {isSelecting ? (
