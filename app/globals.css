@@ -87,13 +87,15 @@
   --background: oklch(0.985 0.008 88);
   --foreground: oklch(0.18 0.035 255);
 
-  --card: oklch(1 0 0);
+  --card: oklch(0.996 0.006 88);
   --card-foreground: oklch(0.18 0.035 255);
+  --popover: oklch(0.996 0.006 88);
+  --popover-foreground: oklch(0.18 0.035 255);
 
   --primary: oklch(0.28 0.075 255);
   --primary-foreground: oklch(0.98 0.01 90);
 
-  --secondary: oklch(0.94 0.025 88);
+  --secondary: oklch(0.945 0.028 88);
   --secondary-foreground: oklch(0.22 0.04 255);
 
   --muted: oklch(0.955 0.012 88);
@@ -105,6 +107,14 @@
   --border: oklch(0.88 0.018 88);
   --input: oklch(0.9 0.018 88);
   --ring: oklch(0.72 0.11 82);
+  --destructive: oklch(0.57 0.21 26);
+
+  --chart-1: oklch(0.78 0.12 82);
+  --chart-2: oklch(0.58 0.12 168);
+  --chart-3: oklch(0.54 0.14 255);
+  --chart-4: oklch(0.64 0.16 38);
+  --chart-5: oklch(0.53 0.13 310);
+  --radius: 0.8rem;
 
   --sidebar: oklch(0.22 0.055 255);
   --sidebar-foreground: oklch(0.97 0.01 90);
@@ -113,6 +123,7 @@
   --sidebar-accent: oklch(0.3 0.06 255);
   --sidebar-accent-foreground: oklch(0.98 0.01 90);
   --sidebar-border: oklch(0.33 0.05 255);
+  --sidebar-ring: oklch(0.78 0.12 82);
 }
 
 .dark {
@@ -155,8 +166,27 @@
   }
   body {
     @apply bg-background text-foreground;
+    background:
+      radial-gradient(circle at top left, color-mix(in oklch, var(--accent) 16%, transparent) 0, transparent 34rem),
+      linear-gradient(180deg, color-mix(in oklch, var(--background) 92%, white) 0%, var(--background) 42%);
   }
   html {
     @apply font-sans;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--accent) 45%, transparent);
+    color: var(--accent-foreground);
+  }
+}
+
+@layer components {
+  :where(div, section, article, aside)[class~="border"]:not([class*="rounded-"]) {
+    border-radius: var(--radius-lg);
+  }
+
+  :where(div, section, article)[class~="bg-background"][class~="border"],
+  :where(div, section, article)[class~="bg-card"][class~="border"] {
+    background-color: color-mix(in oklch, var(--card) 94%, var(--background));
+    box-shadow: 0 1px 2px color-mix(in oklch, var(--foreground) 8%, transparent);
   }
 }

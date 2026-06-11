@@ -13,6 +13,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { PaginationControls, PaginationMeta } from "@/components/pagination-controls";
+import { LoadingState } from "@/components/ui/loading-state";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { CartItem, useCart } from "@/lib/store/cart";
 import { useRouter } from "next/navigation";
@@ -179,7 +180,7 @@ export default function AdminCategoriesPage() {
                         {isLoading && (
                             <TableRow>
                                 <TableCell colSpan={isSelecting ? 6 : 5} className="h-24 text-center">
-                                    Loading categories...
+                                    <LoadingState label="Loading categories..." />
                                 </TableCell>
                             </TableRow>
                         )}

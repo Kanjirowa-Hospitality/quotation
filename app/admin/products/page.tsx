@@ -14,6 +14,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { PaginationControls, PaginationMeta } from "@/components/pagination-controls";
+import { LoadingState } from "@/components/ui/loading-state";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCart, CartItem } from "@/lib/store/cart";
 import { Check, ChevronDown, ChevronRight, LoaderCircle, Pencil, Plus, Trash2, Upload } from "lucide-react";
@@ -197,7 +198,7 @@ export default function AdminProductsPage() {
                         {isLoading && (
                             <TableRow>
                                 <TableCell colSpan={isSelecting ? 8 : 7} className="h-24 text-center">
-                                    Loading products...
+                                    <LoadingState label="Loading products..." />
                                 </TableCell>
                             </TableRow>
                         )}

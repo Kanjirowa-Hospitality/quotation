@@ -21,6 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { LoadingState } from "@/components/ui/loading-state";
 import {
     createAdminUserSchema,
     deleteAdminUserSchema,
@@ -281,7 +282,7 @@ export default function AdminUsersPage() {
                             {isLoading && (
                                 <TableRow>
                                     <TableCell colSpan={5} className="h-24 text-center">
-                                        Loading users...
+                                        <LoadingState label="Loading users..." />
                                     </TableCell>
                                 </TableRow>
                             )}

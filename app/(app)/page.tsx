@@ -17,6 +17,7 @@ import { PaginationControls, PaginationMeta } from '@/components/pagination-cont
 import { CartItem, useCart } from '@/lib/store/cart'
 import { Check, Plus } from 'lucide-react'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { LoadingState } from '@/components/ui/loading-state'
 
 type ProductTableItem = {
   id: string
@@ -94,7 +95,7 @@ export default function Page() {
             {isLoading && (
               <TableRow>
                 <TableCell colSpan={isSelecting ? 8 : 7} className="h-24 text-center">
-                  Loading products...
+                  <LoadingState label="Loading products..." />
                 </TableCell>
               </TableRow>
             )}

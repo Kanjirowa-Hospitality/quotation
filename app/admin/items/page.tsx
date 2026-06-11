@@ -9,6 +9,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { LoadingState } from "@/components/ui/loading-state";
 
 type SaleOptionRow = {
     id: string;
@@ -64,7 +65,7 @@ export default function AdminItemsPage() {
                         {isLoading && (
                             <TableRow>
                                 <TableCell colSpan={6} className="h-24 text-center">
-                                    Loading sale options...
+                                    <LoadingState label="Loading sale options..." />
                                 </TableCell>
                             </TableRow>
                         )}

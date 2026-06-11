@@ -35,7 +35,7 @@ export function TopBar({ user }: { user: TopBarUser }) {
     }
 
     return (
-        <header className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2 sm:px-4">
+        <header className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-card/85 px-3 py-2 shadow-sm backdrop-blur sm:px-4">
             <div className="flex min-w-0 items-center gap-2">
                 <Button variant="outline" size="icon" onClick={() => router.back()} aria-label="Go back" title="Go back">
                     <ArrowLeft className="h-5 w-5" />
