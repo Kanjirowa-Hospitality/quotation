@@ -134,7 +134,7 @@ export default function ProductImportPage() {
     };
 
     return (
-        <div className="relative flex min-h-0 w-full max-w-full flex-col gap-4 overflow-hidden md:h-[calc(100vh-10rem)]">
+        <div className="relative flex min-h-0 w-full max-w-full flex-col gap-3 overflow-hidden md:h-full">
             {loadingMessage && (
                 <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/75 p-4 backdrop-blur-sm">
                     <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-md border bg-background p-5 text-center shadow-lg">

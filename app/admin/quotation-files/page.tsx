@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CldUploadButton, type CloudinaryUploadWidgetResults } from "next-cloudinary";
 import { ExternalLink, FileText, LoaderCircle, Pencil, Trash2, Upload, X } from "lucide-react";
 import { Button, LoadingButton } from "@/components/ui/button";
+import { LoadingState } from "@/components/ui/loading-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -212,8 +213,8 @@ export default function AdminQuotationFilesPage() {
     };
 
     return (
-        <div className="flex min-h-0 flex-col gap-4 md:h-[calc(100vh-10rem)] md:overflow-hidden">
-            <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm">
+        <div className="flex min-h-0 flex-col gap-3 md:h-full md:overflow-hidden">
+            <div className="shrink-0 rounded-md border bg-background p-3 shadow-sm">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0">
                         <h2 className="text-2xl font-semibold">Quotation Files</h2>
@@ -362,7 +363,7 @@ export default function AdminQuotationFilesPage() {
                             {isLoading && (
                                 <TableRow>
                                     <TableCell colSpan={6} className="h-24 text-center">
-                                        Loading quotation files...
+                                        <LoadingState label="Loading quotation files..." />
                                     </TableCell>
                                 </TableRow>
                             )}

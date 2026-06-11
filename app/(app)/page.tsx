@@ -17,6 +17,7 @@ import { PaginationControls, PaginationMeta } from '@/components/pagination-cont
 import { CartItem, useCart } from '@/lib/store/cart'
 import { Check, Plus } from 'lucide-react'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { LoadingState } from '@/components/ui/loading-state'
 
 type ProductTableItem = {
   id: string
@@ -59,8 +60,8 @@ export default function Page() {
   })
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
+    <div className="flex min-h-0 flex-col gap-3 md:h-full md:overflow-hidden">
+      <div className="flex shrink-0 gap-2">
         <Input
           placeholder="Search products..."
           value={search}
@@ -76,9 +77,9 @@ export default function Page() {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-md border bg-background">
+      <div className="min-h-0 flex-1 overflow-auto rounded-md border bg-background">
         <Table className="min-w-[920px]">
-          <TableHeader>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-background [&_th]:shadow-[inset_0_-1px_0_0_var(--border)]">
             <TableRow>
               {isSelecting && <TableHead className="w-10">Select</TableHead>}
               <TableHead className="w-16">Image</TableHead>
@@ -94,7 +95,7 @@ export default function Page() {
             {isLoading && (
               <TableRow>
                 <TableCell colSpan={isSelecting ? 8 : 7} className="h-24 text-center">
-                  Loading products...
+                  <LoadingState label="Loading products..." />
                 </TableCell>
               </TableRow>
             )}
@@ -195,7 +196,9 @@ export default function Page() {
         </Table>
       </div>
 
-      <PaginationControls pagination={data?.pagination} onPageChange={setPage} />
+      <div className="shrink-0">
+        <PaginationControls pagination={data?.pagination} onPageChange={setPage} />
+      </div>
     </div>
   )
 }
