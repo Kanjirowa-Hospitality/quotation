@@ -39,17 +39,17 @@ export default function AdminItemsPage() {
     });
 
     return (
-        <div className="space-y-4">
-            <div>
+        <div className="flex min-h-0 flex-col gap-3 md:h-full md:overflow-hidden">
+            <div className="shrink-0">
                 <h2 className="text-xl font-semibold">Sale Options</h2>
                 <p className="text-sm text-muted-foreground">
                     Prices grouped under product variants
                 </p>
             </div>
 
-            <div className="overflow-x-auto rounded-md border bg-background">
+            <div className="min-h-0 flex-1 overflow-auto rounded-md border bg-background">
                 <Table className="min-w-[760px]">
-                    <TableHeader>
+                    <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-background [&_th]:shadow-[inset_0_-1px_0_0_var(--border)]">
                         <TableRow>
                             <TableHead>Image</TableHead>
                             <TableHead>Product</TableHead>

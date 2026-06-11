@@ -136,8 +136,8 @@ export default function AdminProductsPage() {
     });
 
     return (
-        <div className="flex min-h-0 flex-col gap-4 md:h-[calc(100vh-10rem)] md:overflow-hidden">
-            <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm">
+        <div className="flex min-h-0 flex-col gap-3 md:h-full md:overflow-hidden">
+            <div className="shrink-0 rounded-md border bg-background p-3 shadow-sm">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <h2 className="text-xl font-semibold">Products</h2>

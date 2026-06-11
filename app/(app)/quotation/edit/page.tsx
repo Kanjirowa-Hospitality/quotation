@@ -30,6 +30,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Download, FileSpreadsheet, FileText, LoaderCircle, Percent, Trash2 } from 'lucide-react'
 import { getValidationError, parsePriceInput, quotationExportSchema } from '@/lib/validation/product'
+import { cn } from '@/lib/utils'
 
 const fields = [
     { id: 'name', label: 'Product name' },
@@ -40,7 +41,11 @@ const fields = [
 
 type FieldId = (typeof fields)[number]['id']
 type ExportFormat = 'excel' | 'word' | 'pdf'
-type DiscountScope = 'all' | 'category'
+type BulkAdjustmentMode = 'discount' | 'increase'
+type EditableQuotationItem = CartItem & {
+    priceAdjustmentMode?: BulkAdjustmentMode
+    priceAdjustmentPercent?: number
+}
 type QuotationMeta = {
     quotationDate: string
     customerName: string
@@ -93,23 +98,36 @@ const exportFormats: {
         },
     ]
 
-function parseDiscountInput(value: string) {
+function parsePercentInput(value: string) {
     const normalized = value.trim()
 
     if (!normalized) return null
     if (!/^\d*(?:\.\d{0,2})?$/.test(normalized)) return null
 
-    const discount = Number(normalized)
+    const percent = Number(normalized)
 
-    return Number.isFinite(discount) && discount >= 0 && discount <= 100 ? discount : null
+    return Number.isFinite(percent) && percent >= 0 && percent <= 100 ? percent : null
 }
 
-function discountedPrice(price: number, discountPercent?: number) {
-    const discount = Number(discountPercent ?? 0)
+function getPriceAdjustment(item: EditableQuotationItem) {
+    if (typeof item.priceAdjustmentPercent === 'number') return item.priceAdjustmentPercent
 
-    if (!Number.isFinite(discount) || discount <= 0) return price
+    const discount = Number(item.discountPercent ?? 0)
+    return Number.isFinite(discount) && discount > 0 ? -discount : 0
+}
 
-    return Math.round(price * (1 - discount / 100) * 100) / 100
+function getPriceAdjustmentMode(item: EditableQuotationItem) {
+    if (item.priceAdjustmentMode) return item.priceAdjustmentMode
+
+    return getPriceAdjustment(item) > 0 ? 'increase' : 'discount'
+}
+
+function adjustedPrice(price: number, adjustmentPercent?: number) {
+    const adjustment = Number(adjustmentPercent ?? 0)
+
+    if (!Number.isFinite(adjustment) || adjustment === 0) return price
+
+    return Math.round(price * (1 + adjustment / 100) * 100) / 100
 }
 
 function getCategoryKey(item: CartItem) {
@@ -130,10 +148,10 @@ export default function EditQuotationPage() {
     const [selected, setSelected] = useState<Set<FieldId>>(
         new Set(['name', 'image', 'price', 'description'])
     )
-    const [editableItems, setEditableItems] = useState<CartItem[] | null>(null)
-    const [bulkDiscount, setBulkDiscount] = useState('')
-    const [bulkDiscountScope, setBulkDiscountScope] = useState<DiscountScope>('all')
-    const [bulkDiscountCategory, setBulkDiscountCategory] = useState('')
+    const [editableItems, setEditableItems] = useState<EditableQuotationItem[] | null>(null)
+    const [bulkAdjustmentValue, setBulkAdjustmentValue] = useState('')
+    const [bulkAdjustmentMode, setBulkAdjustmentMode] = useState<BulkAdjustmentMode>('discount')
+    const [bulkAdjustmentTarget, setBulkAdjustmentTarget] = useState('all')
     const loadedCategoryDetailsRef = useRef(false)
     const [exportStatus, setExportStatus] = useState<ExportStatus>(null)
     const [exportError, setExportError] = useState('')
@@ -162,7 +180,7 @@ export default function EditQuotationPage() {
         () =>
             quotationItems.map((item) => ({
                 ...item,
-                price: discountedPrice(item.price, item.discountPercent),
+                price: adjustedPrice(item.price, getPriceAdjustment(item)),
             })),
         [quotationItems]
     )
@@ -209,7 +227,7 @@ export default function EditQuotationPage() {
         setSelected(s)
     }
 
-    const updateItem = (itemId: string, patch: Partial<CartItem>) => {
+    const updateItem = (itemId: string, patch: Partial<EditableQuotationItem>) => {
         setEditableItems((current) =>
             (current ?? items).map((item) =>
                 item.itemId === itemId ? { ...item, ...patch } : item
@@ -223,32 +241,36 @@ export default function EditQuotationPage() {
         )
     }
 
-    const applyBulkDiscount = () => {
-        const discount = parseDiscountInput(bulkDiscount)
-        if (discount === null) return
-        if (bulkDiscountScope === 'category' && !bulkDiscountCategory) return
+    const applyBulkAdjustment = () => {
+        const percent = parsePercentInput(bulkAdjustmentValue)
+        if (percent === null) return
 
         setEditableItems((current) =>
             (current ?? items).map((item) => {
                 const shouldApply =
-                    bulkDiscountScope === 'all' || getCategoryKey(item) === bulkDiscountCategory
+                    bulkAdjustmentTarget === 'all' || getCategoryKey(item) === bulkAdjustmentTarget
+                const adjustment = bulkAdjustmentMode === 'increase' ? percent : -percent
 
                 return shouldApply
                     ? {
                         ...item,
-                        discountPercent: discount,
+                        discountPercent: adjustment < 0 ? percent : 0,
+                        priceAdjustmentMode: bulkAdjustmentMode,
+                        priceAdjustmentPercent: adjustment,
                     }
                     : item
             })
         )
     }
 
-    const clearDiscounts = () => {
-        setBulkDiscount('')
+    const clearAdjustments = () => {
+        setBulkAdjustmentValue('')
         setEditableItems((current) =>
             (current ?? items).map((item) => ({
                 ...item,
                 discountPercent: 0,
+                priceAdjustmentMode: 'discount',
+                priceAdjustmentPercent: 0,
             }))
         )
     }
@@ -339,7 +361,7 @@ export default function EditQuotationPage() {
     }
 
     return (
-        <div className="flex min-h-0 flex-col gap-4 md:h-[calc(100vh-3rem)] md:overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-3 md:h-full md:overflow-hidden">
             <div className="shrink-0">
                 <h2 className="text-xl font-semibold">Edit quotation</h2>
                 <p className="text-sm text-muted-foreground">
@@ -383,71 +405,59 @@ export default function EditQuotationPage() {
                             </p>
                         </div>
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                            <Select
-                                value={bulkDiscountScope}
-                                onValueChange={(value) => setBulkDiscountScope(value as DiscountScope)}
-                            >
+                            <Select value={bulkAdjustmentMode} onValueChange={(value) => setBulkAdjustmentMode(value as BulkAdjustmentMode)}>
+                                <SelectTrigger aria-label="Price adjustment type" className="h-8 w-full sm:w-32">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="discount">Discount</SelectItem>
+                                    <SelectItem value="increase">Increase</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <Select value={bulkAdjustmentTarget} onValueChange={setBulkAdjustmentTarget}>
                                 <SelectTrigger
-                                    aria-label="Discount apply option"
-                                    className="h-8 w-full sm:w-36"
+                                    aria-label="Price adjustment apply option"
+                                    className="h-8 w-full sm:w-44"
                                 >
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All products</SelectItem>
-                                    <SelectItem value="category">By category</SelectItem>
+                                    {discountCategories.map((category) => (
+                                        <SelectItem key={category.id} value={category.id}>
+                                            {category.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
-                            {bulkDiscountScope === 'category' && (
-                                <Select
-                                    value={bulkDiscountCategory}
-                                    onValueChange={setBulkDiscountCategory}
-                                    disabled={discountCategories.length === 0}
-                                >
-                                    <SelectTrigger
-                                        aria-label="Discount category"
-                                        className="h-8 w-full sm:w-44"
-                                    >
-                                        <SelectValue placeholder="Select category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {discountCategories.map((category) => (
-                                            <SelectItem key={category.id} value={category.id}>
-                                                {category.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
+
                             <div className="relative">
                                 <Percent className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                                 <Input
-                                    aria-label="Discount percentage for all products"
+                                    aria-label="Price adjustment percentage"
                                     inputMode="decimal"
-                                    value={bulkDiscount}
-                                    onChange={(event) => setBulkDiscount(event.target.value)}
-                                    placeholder="Discount %"
+                                    value={bulkAdjustmentValue}
+                                    onChange={(event) => setBulkAdjustmentValue(event.target.value)}
+                                    placeholder={`${bulkAdjustmentMode === 'increase' ? 'Increase' : 'Discount'} %`}
                                     className="h-8 w-full pl-7 sm:w-32"
                                 />
                             </div>
                             <Button
                                 variant="outline"
                                 className="w-full sm:w-auto"
-                                onClick={applyBulkDiscount}
-                                disabled={
-                                    parseDiscountInput(bulkDiscount) === null ||
-                                    (bulkDiscountScope === 'category' && !bulkDiscountCategory)
-                                }
+                                onClick={applyBulkAdjustment}
+                                disabled={parsePercentInput(bulkAdjustmentValue) === null}
                             >
-                                {bulkDiscountScope === 'category' ? 'Apply to category' : 'Apply to all'}
+                                {bulkAdjustmentTarget === 'all' ? 'Apply to all' : 'Apply to category'}
                             </Button>
                             <Button
                                 variant="ghost"
                                 className="w-full sm:w-auto"
-                                onClick={clearDiscounts}
+                                onClick={clearAdjustments}
                                 disabled={quotationItems.length === 0}
                             >
-                                Clear discounts
+                                Clear changes
                             </Button>
                         </div>
                         <Dialog open={formatDialogOpen} onOpenChange={setFormatDialogOpen}>
@@ -465,107 +475,107 @@ export default function EditQuotationPage() {
                                     </DialogDescription>
                                 </DialogHeader>
 
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="quotation-date">Date</Label>
-                                    <Input
-                                        id="quotation-date"
-                                        value={quotationMeta.quotationDate}
-                                        aria-invalid={!!quotationMetaErrors.quotationDate}
-                                        onChange={(e) => updateQuotationMeta('quotationDate', e.target.value)}
-                                    />
-                                    {quotationMetaErrors.quotationDate && (
-                                        <p className="text-sm text-destructive">{quotationMetaErrors.quotationDate}</p>
-                                    )}
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="quotation-date">Date</Label>
+                                        <Input
+                                            id="quotation-date"
+                                            value={quotationMeta.quotationDate}
+                                            aria-invalid={!!quotationMetaErrors.quotationDate}
+                                            onChange={(e) => updateQuotationMeta('quotationDate', e.target.value)}
+                                        />
+                                        {quotationMetaErrors.quotationDate && (
+                                            <p className="text-sm text-destructive">{quotationMetaErrors.quotationDate}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="quotation-title">Quotation for</Label>
+                                        <Input
+                                            id="quotation-title"
+                                            value={quotationMeta.quotationTitle}
+                                            aria-invalid={!!quotationMetaErrors.quotationTitle}
+                                            onChange={(e) => updateQuotationMeta('quotationTitle', e.target.value)}
+                                        />
+                                        {quotationMetaErrors.quotationTitle && (
+                                            <p className="text-sm text-destructive">{quotationMetaErrors.quotationTitle}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1.5 sm:col-span-2">
+                                        <Label htmlFor="customer-name">Hotel / customer name</Label>
+                                        <Input
+                                            id="customer-name"
+                                            value={quotationMeta.customerName}
+                                            aria-invalid={!!quotationMetaErrors.customerName}
+                                            onChange={(e) => updateQuotationMeta('customerName', e.target.value)}
+                                        />
+                                        {quotationMetaErrors.customerName && (
+                                            <p className="text-sm text-destructive">{quotationMetaErrors.customerName}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1.5 sm:col-span-2">
+                                        <Label htmlFor="customer-address">Hotel / customer address</Label>
+                                        <Input
+                                            id="customer-address"
+                                            value={quotationMeta.customerAddress}
+                                            aria-invalid={!!quotationMetaErrors.customerAddress}
+                                            onChange={(e) => updateQuotationMeta('customerAddress', e.target.value)}
+                                        />
+                                        {quotationMetaErrors.customerAddress && (
+                                            <p className="text-sm text-destructive">{quotationMetaErrors.customerAddress}</p>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="quotation-title">Quotation for</Label>
-                                    <Input
-                                        id="quotation-title"
-                                        value={quotationMeta.quotationTitle}
-                                        aria-invalid={!!quotationMetaErrors.quotationTitle}
-                                        onChange={(e) => updateQuotationMeta('quotationTitle', e.target.value)}
-                                    />
-                                    {quotationMetaErrors.quotationTitle && (
-                                        <p className="text-sm text-destructive">{quotationMetaErrors.quotationTitle}</p>
-                                    )}
-                                </div>
-                                <div className="space-y-1.5 sm:col-span-2">
-                                    <Label htmlFor="customer-name">Hotel / customer name</Label>
-                                    <Input
-                                        id="customer-name"
-                                        value={quotationMeta.customerName}
-                                        aria-invalid={!!quotationMetaErrors.customerName}
-                                        onChange={(e) => updateQuotationMeta('customerName', e.target.value)}
-                                    />
-                                    {quotationMetaErrors.customerName && (
-                                        <p className="text-sm text-destructive">{quotationMetaErrors.customerName}</p>
-                                    )}
-                                </div>
-                                <div className="space-y-1.5 sm:col-span-2">
-                                    <Label htmlFor="customer-address">Hotel / customer address</Label>
-                                    <Input
-                                        id="customer-address"
-                                        value={quotationMeta.customerAddress}
-                                        aria-invalid={!!quotationMetaErrors.customerAddress}
-                                        onChange={(e) => updateQuotationMeta('customerAddress', e.target.value)}
-                                    />
-                                    {quotationMetaErrors.customerAddress && (
-                                        <p className="text-sm text-destructive">{quotationMetaErrors.customerAddress}</p>
-                                    )}
-                                </div>
-                            </div>
 
-                            <div className="space-y-2">
-                                {exportError && <p className="text-sm text-destructive">{exportError}</p>}
-                                {exportFormats.map((format) => {
-                                    const Icon = format.icon
-                                    const status =
-                                        exportStatus?.format === format.id ? exportStatus.state : null
-                                    const isGenerating = exportStatus?.state === 'loading'
+                                <div className="space-y-2">
+                                    {exportError && <p className="text-sm text-destructive">{exportError}</p>}
+                                    {exportFormats.map((format) => {
+                                        const Icon = format.icon
+                                        const status =
+                                            exportStatus?.format === format.id ? exportStatus.state : null
+                                        const isGenerating = exportStatus?.state === 'loading'
 
-                                    return (
-                                        <button
-                                            key={format.id}
-                                            type="button"
-                                            onClick={() => exportFile(format.id)}
-                                            disabled={isGenerating}
-                                            aria-busy={status === 'loading'}
-                                            className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-70"
-                                        >
-                                            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
-                                                <Icon className="h-4 w-4" />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="font-medium">{format.label}</p>
-                                                    <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                                                        .{format.extension}
-                                                    </span>
+                                        return (
+                                            <button
+                                                key={format.id}
+                                                type="button"
+                                                onClick={() => exportFile(format.id)}
+                                                disabled={isGenerating}
+                                                aria-busy={status === 'loading'}
+                                                className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-70"
+                                            >
+                                                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
+                                                    <Icon className="h-4 w-4" />
                                                 </div>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {format.description}
-                                                </p>
-                                            </div>
-                                            {status === 'loading' && (
-                                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                                                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                                                </span>
-                                            )}
-                                            {status === 'success' && (
-                                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-green-600 text-white">
-                                                    <Check className="h-4 w-4" />
-                                                </span>
-                                            )}
-                                            {status === 'error' && (
-                                                <span className="text-xs font-medium text-destructive">
-                                                    Failed
-                                                </span>
-                                            )}
-                                        </button>
-                                    )
-                                })}
-                            </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-medium">{format.label}</p>
+                                                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                                                            .{format.extension}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {format.description}
+                                                    </p>
+                                                </div>
+                                                {status === 'loading' && (
+                                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                                                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                                                    </span>
+                                                )}
+                                                {status === 'success' && (
+                                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-green-600 text-white">
+                                                        <Check className="h-4 w-4" />
+                                                    </span>
+                                                )}
+                                                {status === 'error' && (
+                                                    <span className="text-xs font-medium text-destructive">
+                                                        Failed
+                                                    </span>
+                                                )}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
                             </DialogContent>
                         </Dialog>
                     </div>
@@ -584,7 +594,7 @@ export default function EditQuotationPage() {
                                     <TableHead className="min-w-56">Product name</TableHead>
                                     <TableHead className="min-w-72">Description</TableHead>
                                     <TableHead className="w-32">Base price</TableHead>
-                                    <TableHead className="w-28">Discount</TableHead>
+                                    <TableHead className="w-48">Adjustment</TableHead>
                                     <TableHead className="w-32">Final price</TableHead>
                                     <TableHead className="min-w-64">Image URL</TableHead>
                                     <TableHead className="w-16 text-right">Action</TableHead>
@@ -592,100 +602,137 @@ export default function EditQuotationPage() {
                             </TableHeader>
                             <TableBody>
                                 {quotationItems.map((item) => {
-                                    const finalPrice = discountedPrice(item.price, item.discountPercent)
+                                    const priceAdjustment = getPriceAdjustment(item)
+                                    const priceAdjustmentMode = getPriceAdjustmentMode(item)
+                                    const finalPrice = adjustedPrice(item.price, priceAdjustment)
 
                                     return (
-                                    <TableRow key={item.itemId}>
-                                        <TableCell>
-                                            {/* eslint-disable-next-line @next/next/no-img-element -- Product previews can be local placeholders or remote catalog URLs. */}
-                                            <img
-                                                src={item.imageUrl || '/placeholder.svg'}
-                                                alt={item.productName}
-                                                className="h-12 w-12 rounded-md object-cover"
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input
-                                                aria-label="Product name"
-                                                value={item.productName}
-                                                onChange={(e) =>
-                                                    updateItem(item.itemId, { productName: e.target.value })
-                                                }
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Textarea
-                                                aria-label="Description"
-                                                className="min-h-12"
-                                                value={item.description ?? ''}
-                                                onChange={(e) =>
-                                                    updateItem(item.itemId, { description: e.target.value })
-                                                }
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input
-                                                aria-label="Base price"
-                                                type="number"
-                                                inputMode="decimal"
-                                                min={0}
-                                                value={item.price}
-                                                onChange={(e) => {
-                                                    const price = parsePriceInput(e.target.value)
-                                                    if (price === null) return
-                                                    updateItem(item.itemId, {
-                                                        price,
-                                                    })
-                                                }}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="relative">
+                                        <TableRow
+                                            key={item.itemId}
+                                            className={cn(
+                                                priceAdjustment > 0 && 'bg-emerald-50 hover:bg-emerald-50/80',
+                                                priceAdjustment < 0 && 'bg-red-50 hover:bg-red-50/80'
+                                            )}
+                                        >
+                                            <TableCell>
+                                                {/* eslint-disable-next-line @next/next/no-img-element -- Product previews can be local placeholders or remote catalog URLs. */}
+                                                <img
+                                                    src={item.imageUrl || '/placeholder.svg'}
+                                                    alt={item.productName}
+                                                    className="h-12 w-12 rounded-md object-cover"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
                                                 <Input
-                                                    aria-label="Discount percentage"
+                                                    aria-label="Product name"
+                                                    value={item.productName}
+                                                    onChange={(e) =>
+                                                        updateItem(item.itemId, { productName: e.target.value })
+                                                    }
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Textarea
+                                                    aria-label="Description"
+                                                    className="min-h-12"
+                                                    value={item.description ?? ''}
+                                                    onChange={(e) =>
+                                                        updateItem(item.itemId, { description: e.target.value })
+                                                    }
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input
+                                                    aria-label="Base price"
+                                                    type="number"
                                                     inputMode="decimal"
-                                                    value={item.discountPercent ?? ''}
+                                                    min={0}
+                                                    value={item.price}
                                                     onChange={(e) => {
-                                                        const value = e.target.value.trim()
-                                                        const discount = parseDiscountInput(value)
-
-                                                        if (value && discount === null) return
-
+                                                        const price = parsePriceInput(e.target.value)
+                                                        if (price === null) return
                                                         updateItem(item.itemId, {
-                                                            discountPercent: discount ?? undefined,
+                                                            price,
                                                         })
                                                     }}
-                                                    className="pr-6"
                                                 />
-                                                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                                    %
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="font-semibold">
-                                            Rs. {finalPrice}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input
-                                                aria-label="Image URL"
-                                                value={item.imageUrl ?? ''}
-                                                onChange={(e) =>
-                                                    updateItem(item.itemId, { imageUrl: e.target.value })
-                                                }
-                                            />
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                size="icon-sm"
-                                                variant="destructive"
-                                                className="cursor-pointer"
-                                                onClick={() => deleteItem(item.itemId)}
-                                                aria-label={`Delete ${item.productName}`}
-                                            >
-                                                <Trash2 className="h-4 w-4 cursor-pointer" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex gap-2">
+                                                    <Select
+                                                        value={priceAdjustmentMode}
+                                                        onValueChange={(value) => {
+                                                            const percent = Math.abs(priceAdjustment)
+                                                            const nextMode = value as BulkAdjustmentMode
+                                                            const adjustment = nextMode === 'increase' ? percent : -percent
+
+                                                            updateItem(item.itemId, {
+                                                                discountPercent: adjustment < 0 ? percent : 0,
+                                                                priceAdjustmentMode: nextMode,
+                                                                priceAdjustmentPercent: adjustment,
+                                                            })
+                                                        }}
+                                                    >
+                                                        <SelectTrigger aria-label="Price adjustment type" className="w-24">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="discount">Disc.</SelectItem>
+                                                            <SelectItem value="increase">Inc.</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <div className="relative min-w-20 flex-1">
+                                                        <Input
+                                                            aria-label="Price adjustment percentage"
+                                                            inputMode="decimal"
+                                                            value={Math.abs(priceAdjustment) || ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value.trim()
+                                                                const percent = parsePercentInput(value)
+
+                                                                if (value && percent === null) return
+
+                                                                const nextPercent = percent ?? 0
+                                                                const adjustment = priceAdjustmentMode === 'increase' ? nextPercent : -nextPercent
+
+                                                                updateItem(item.itemId, {
+                                                                    discountPercent: adjustment < 0 ? nextPercent : 0,
+                                                                    priceAdjustmentMode,
+                                                                    priceAdjustmentPercent: adjustment,
+                                                                })
+                                                            }}
+                                                            className="pr-6"
+                                                        />
+                                                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                                            %
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="font-semibold">
+                                                Rs. {finalPrice}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input
+                                                    aria-label="Image URL"
+                                                    value={item.imageUrl ?? ''}
+                                                    onChange={(e) =>
+                                                        updateItem(item.itemId, { imageUrl: e.target.value })
+                                                    }
+                                                />
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button
+                                                    size="icon-sm"
+                                                    variant="destructive"
+                                                    className="cursor-pointer"
+                                                    onClick={() => deleteItem(item.itemId)}
+                                                    aria-label={`Delete ${item.productName}`}
+                                                >
+                                                    <Trash2 className="h-4 w-4 cursor-pointer" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
                                     )
                                 })}
                             </TableBody>
