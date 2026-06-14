@@ -361,28 +361,28 @@ export default function EditQuotationPage() {
     }
 
     return (
-        <div className="flex min-h-0 flex-col gap-3 md:h-full md:overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-3 md:h-full md:overflow-hidden [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:gap-1">
             <div className="shrink-0">
-                <h2 className="text-xl font-semibold">Edit quotation</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="text-xl font-semibold [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-base">Edit quotation</h2>
+                <p className="text-sm text-muted-foreground [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-[11px]">
                     These edits are only used for export and will not update product data.
                 </p>
             </div>
 
-            <section className="shrink-0 rounded-lg border bg-background p-4">
-                <div className="mb-3">
-                    <h3 className="font-medium">Export fields</h3>
-                    <p className="text-sm text-muted-foreground">
+            <section className="shrink-0 rounded-lg border bg-background p-4 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-2">
+                <div className="mb-3 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:mb-1">
+                    <h3 className="font-medium [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-xs">Export fields</h3>
+                    <p className="text-sm text-muted-foreground [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-[11px]">
                         Choose which fields should appear in the exported quotation.
                     </p>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:gap-1">
                     {fields.map((f) => (
                         <Label
                             key={f.id}
                             htmlFor={f.id}
-                            className="flex cursor-pointer items-center gap-3 rounded-md border bg-muted/40 p-3"
+                            className="flex cursor-pointer items-center gap-3 rounded-md border bg-muted/40 p-3 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:gap-1.5 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-1.5 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-xs"
                         >
                             <Checkbox
                                 id={f.id}
@@ -395,18 +395,18 @@ export default function EditQuotationPage() {
                 </div>
             </section>
 
-            <section className="flex min-h-0 flex-1 flex-col gap-4">
-                <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                            <h3 className="font-medium">Quotation items</h3>
-                            <p className="text-sm text-muted-foreground">
+            <section className="flex min-h-0 flex-1 flex-col gap-4 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:gap-1">
+                <div className="shrink-0 rounded-md border bg-background p-4 shadow-sm [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-2">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:grid [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:grid-cols-[minmax(0,1fr)_auto] [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:items-center [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:gap-1">
+                        <div className="min-w-0 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:col-span-2">
+                            <h3 className="font-medium [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-xs">Quotation items</h3>
+                            <p className="text-sm text-muted-foreground [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-[11px]">
                                 Edit names, image URLs, descriptions, prices, and discounts before exporting.
                             </p>
                         </div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:min-w-0 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:flex-wrap [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:gap-1">
                             <Select value={bulkAdjustmentMode} onValueChange={(value) => setBulkAdjustmentMode(value as BulkAdjustmentMode)}>
-                                <SelectTrigger aria-label="Price adjustment type" className="h-8 w-full sm:w-32">
+                                <SelectTrigger aria-label="Price adjustment type" className="h-8 w-full sm:w-32 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-xs">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -418,7 +418,7 @@ export default function EditQuotationPage() {
                             <Select value={bulkAdjustmentTarget} onValueChange={setBulkAdjustmentTarget}>
                                 <SelectTrigger
                                     aria-label="Price adjustment apply option"
-                                    className="h-8 w-full sm:w-44"
+                                    className="h-8 w-full sm:w-44 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-xs"
                                 >
                                     <SelectValue />
                                 </SelectTrigger>
@@ -440,12 +440,12 @@ export default function EditQuotationPage() {
                                     value={bulkAdjustmentValue}
                                     onChange={(event) => setBulkAdjustmentValue(event.target.value)}
                                     placeholder={`${bulkAdjustmentMode === 'increase' ? 'Increase' : 'Discount'} %`}
-                                    className="h-8 w-full pl-7 sm:w-32"
+                                    className="h-8 w-full pl-7 sm:w-32 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-xs"
                                 />
                             </div>
                             <Button
                                 variant="outline"
-                                className="w-full sm:w-auto"
+                                className="w-full sm:w-auto [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-2 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-xs"
                                 onClick={applyBulkAdjustment}
                                 disabled={parsePercentInput(bulkAdjustmentValue) === null}
                             >
@@ -453,7 +453,7 @@ export default function EditQuotationPage() {
                             </Button>
                             <Button
                                 variant="ghost"
-                                className="w-full sm:w-auto"
+                                className="w-full sm:w-auto [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-2 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-xs"
                                 onClick={clearAdjustments}
                                 disabled={quotationItems.length === 0}
                             >
@@ -462,7 +462,7 @@ export default function EditQuotationPage() {
                         </div>
                         <Dialog open={formatDialogOpen} onOpenChange={setFormatDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button className="w-full sm:w-auto" disabled={quotationItems.length === 0 || selected.size === 0}>
+                                <Button className="w-full sm:w-auto [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-2 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-xs" disabled={quotationItems.length === 0 || selected.size === 0}>
                                     <Download className="mr-2 h-4 w-4" />
                                     Generate quotation
                                 </Button>
@@ -587,17 +587,17 @@ export default function EditQuotationPage() {
                     </div>
                 ) : (
                     <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-background">
-                        <table className="min-w-[1160px] w-full caption-bottom text-xs">
+                        <table className="min-w-[1160px] w-full caption-bottom text-xs [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-[11px]">
                             <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-background [&_th]:shadow-[inset_0_-1px_0_0_var(--border)]">
                                 <TableRow>
-                                    <TableHead className="w-16">Image</TableHead>
-                                    <TableHead className="min-w-56">Product name</TableHead>
-                                    <TableHead className="min-w-72">Description</TableHead>
-                                    <TableHead className="w-32">Base price</TableHead>
-                                    <TableHead className="w-48">Adjustment</TableHead>
-                                    <TableHead className="w-32">Final price</TableHead>
-                                    <TableHead className="min-w-64">Image URL</TableHead>
-                                    <TableHead className="w-16 text-right">Action</TableHead>
+                                    <TableHead className="w-16 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1">Image</TableHead>
+                                    <TableHead className="min-w-56 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1">Product name</TableHead>
+                                    <TableHead className="min-w-72 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1">Description</TableHead>
+                                    <TableHead className="w-32 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1">Base price</TableHead>
+                                    <TableHead className="w-48 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1">Adjustment</TableHead>
+                                    <TableHead className="w-32 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1">Final price</TableHead>
+                                    <TableHead className="min-w-64 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1">Image URL</TableHead>
+                                    <TableHead className="w-16 text-right [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -614,40 +614,42 @@ export default function EditQuotationPage() {
                                                 priceAdjustment < 0 && 'bg-red-50 hover:bg-red-50/80'
                                             )}
                                         >
-                                            <TableCell>
+                                            <TableCell className="[@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-1">
                                                 {/* eslint-disable-next-line @next/next/no-img-element -- Product previews can be local placeholders or remote catalog URLs. */}
                                                 <img
                                                     src={item.imageUrl || '/placeholder.svg'}
                                                     alt={item.productName}
-                                                    className="h-12 w-12 rounded-md object-cover"
+                                                    className="h-12 w-12 rounded-md object-cover [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-9 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:w-9"
                                                 />
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="[@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-1">
                                                 <Input
                                                     aria-label="Product name"
                                                     value={item.productName}
+                                                    className="[@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-6 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1.5 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-[11px]"
                                                     onChange={(e) =>
                                                         updateItem(item.itemId, { productName: e.target.value })
                                                     }
                                                 />
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="[@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-1">
                                                 <Textarea
                                                     aria-label="Description"
-                                                    className="min-h-12"
+                                                    className="min-h-12 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:min-h-8 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1.5 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:py-1 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-[11px]"
                                                     value={item.description ?? ''}
                                                     onChange={(e) =>
                                                         updateItem(item.itemId, { description: e.target.value })
                                                     }
                                                 />
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="[@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-1">
                                                 <Input
                                                     aria-label="Base price"
                                                     type="number"
                                                     inputMode="decimal"
                                                     min={0}
                                                     value={item.price}
+                                                    className="[@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-6 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1.5 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-[11px]"
                                                     onChange={(e) => {
                                                         const price = parsePriceInput(e.target.value)
                                                         if (price === null) return
@@ -657,8 +659,8 @@ export default function EditQuotationPage() {
                                                     }}
                                                 />
                                             </TableCell>
-                                            <TableCell>
-                                                <div className="flex gap-2">
+                                            <TableCell className="[@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-1">
+                                                <div className="flex gap-2 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:gap-1">
                                                     <Select
                                                         value={priceAdjustmentMode}
                                                         onValueChange={(value) => {
@@ -673,7 +675,7 @@ export default function EditQuotationPage() {
                                                             })
                                                         }}
                                                     >
-                                                        <SelectTrigger aria-label="Price adjustment type" className="w-24">
+                                                        <SelectTrigger aria-label="Price adjustment type" className="w-24 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-6 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-[11px]">
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -701,7 +703,7 @@ export default function EditQuotationPage() {
                                                                     priceAdjustmentPercent: adjustment,
                                                                 })
                                                             }}
-                                                            className="pr-6"
+                                                            className="pr-6 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-6 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1.5 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:pr-5 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-[11px]"
                                                         />
                                                         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                                                             %
@@ -709,23 +711,24 @@ export default function EditQuotationPage() {
                                                     </div>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="font-semibold">
+                                            <TableCell className="font-semibold [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-1">
                                                 Rs. {finalPrice}
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="[@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-1">
                                                 <Input
                                                     aria-label="Image URL"
                                                     value={item.imageUrl ?? ''}
+                                                    className="[@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-6 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:px-1.5 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:text-[11px]"
                                                     onChange={(e) =>
                                                         updateItem(item.itemId, { imageUrl: e.target.value })
                                                     }
                                                 />
                                             </TableCell>
-                                            <TableCell className="text-right">
+                                            <TableCell className="text-right [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:p-1">
                                                 <Button
                                                     size="icon-sm"
                                                     variant="destructive"
-                                                    className="cursor-pointer"
+                                                    className="cursor-pointer [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:h-7 [@media_(min-width:1024px)_and_(max-width:1300px)_and_(max-height:620px)]:w-7"
                                                     onClick={() => deleteItem(item.itemId)}
                                                     aria-label={`Delete ${item.productName}`}
                                                 >
